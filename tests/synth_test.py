@@ -4,7 +4,7 @@ import numpy as np
 
 # Synthetic data (as before)
 np.random.seed(42)
-n = 100000
+n = 1000
 real_feature = np.random.randint(0, 2, n)
 y_true = np.random.randint(0, 2, n)
 pred_A = np.where(real_feature == 0, y_true, 1 - y_true)
@@ -23,7 +23,7 @@ router = DynamicRouter(
     method='knn-dw',
     metric="accuracy",
     mode = 'max',
-    finder='knn',
+    finder='annoy',
     k=10
 )
 

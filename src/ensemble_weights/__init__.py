@@ -31,6 +31,9 @@ class DynamicRouter:
         elif self.finder == "faiss":
             from ensemble_weights.neighbors import FaissNeighborFinder
             finder = FaissNeighborFinder(**self.kwargs)
+        elif self.finder == "annoy":
+            from ensemble_weights.neighbors import AnnoyNeighborFinder
+            finder = AnnoyNeighborFinder(**self.kwargs)
         elif self.finder == "hnsw":
             from ensemble_weights.neighbors import HNSWNeighborFinder
             finder = HNSWNeighborFinder(**self.kwargs)
