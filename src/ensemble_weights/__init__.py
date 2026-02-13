@@ -1,4 +1,3 @@
-import numpy as np
 from ensemble_weights.utils import to_numpy, add_batch_dim
 
 metrics = {
@@ -10,24 +9,24 @@ metrics = {
 
 class DynamicRouter:
     def __init__(self, task, dtype, method='knn', metric="accuracy", mode="max", feature_extractor=None, **kwargs):
-        self.task = task
-        self.dtype = dtype
-        self.method = method
+        self.task = task.lower()
+        self.dtype = dtype.lower()
+        self.method = method.lower()
         if isinstance(metric, str):
             if metric in metrics:
-                metric = metrics[metric]
+                metric = metrics[metric.lower()]
             else:
                 raise ValueError(f"Unknown metric name '{metric}'. Available: {list(metrics.keys())}")
         self.metric = metric
         self.kwargs = kwargs
-        self.mode = mode
+        self.mode = mode.lower()
         self.feature_extractor = feature_extractor
         self.model, model_name = self.create_model()
 
     def create_model(self):
-        if self.method == 'knn':
+        if self.method == 'knn-dw':
             if self.dtype == 'tabular' or self.dtype == "image":
-                from ensemble_weights.knn import KNNModel
+                from ensemble_weights.models.knn import KNNModel
                 return KNNModel(metric=self.metric, mode=self.mode, **self.kwargs), 'KNN'
         raise ValueError(f"Unsupported combination: method={self.method}, dtype={self.dtype}")
 
