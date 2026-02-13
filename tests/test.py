@@ -1,5 +1,5 @@
 from ensemble_weights import DynamicRouter
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import mean_squared_error
 import pandas as pd
 import numpy as np
 
@@ -19,10 +19,11 @@ df = pd.DataFrame({
 })
 
 router = DynamicRouter(
-    task='classification',
+    task='regression',
     dtype='tabular',
     method='knn',
-    metric='accuracy',   # callable
+    metric="accuracy",
+    mode = 'max',
     k=10
 )
 
@@ -32,5 +33,5 @@ router.fit(
     preds_dict={'A': df['pred_A'].values, 'B': df['pred_B'].values}
 )
 
-print(router.predict(np.array([[0.0]]), temperature=0.1))   # {'A': ~1.0, 'B': ~0.0}
+print(router.predict(np.array([[0.0]])))   # {'A': ~1.0, 'B': ~0.0}
 print(router.predict(np.array([[1.0]])))   # {'A': ~0.0, 'B': ~1.0}

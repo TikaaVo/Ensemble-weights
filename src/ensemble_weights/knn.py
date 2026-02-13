@@ -3,9 +3,10 @@ import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
 class KNNModel(BaseRouter):
-    def __init__(self, metric, k=10):
+    def __init__(self, metric, mode="max", k=10):
         self.k = k
         self.metric = metric
+        self.mode = mode
         self.model = NearestNeighbors(n_neighbors=k)
         self.matrix = None
         self.models = None
@@ -20,7 +21,11 @@ class KNNModel(BaseRouter):
         for j, name in enumerate(self.models):
             preds = preds_dict[name]
             for i in range(n_val):
-                self.matrix[i,j] = self.metric(y[i], preds[i])
+                score = self.metric(y[i], preds[i])
+                if self.mode == "max":
+                    self.matrix[i,j] = score
+                else:
+                    self.matrix[i,j] = -score
 
         self.model.fit(features)
 
