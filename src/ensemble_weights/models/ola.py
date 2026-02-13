@@ -1,7 +1,7 @@
 from ensemble_weights.base import BaseRouter
 import numpy as np
 
-class KNNModel(BaseRouter):
+class OLAModel(BaseRouter):
     def __init__(self, metric, mode="max", neighbor_finder=None):
         self.metric = metric
         self.mode = mode
@@ -29,9 +29,10 @@ class KNNModel(BaseRouter):
         self.model.fit(features)
 
     def predict(self, x, temperature=1.0):
-        distances, indices = self.model.kneighbors(x.reshape(1,-1))
-        scores = self.matrix[indices]
-        avg_scores = scores.mean(axis=0)
-        exp_scores = np.exp((avg_scores - avg_scores.max()) / temperature)
-        weights = exp_scores / exp_scores.sum()
-        return dict(zip(self.models, weights))
+        distances, indices = self.model.kneighbors(x.reshape(1, -1))
+        neighbor_scores = self.matrix[indices]
+        avg_scores = neighbor_scores.mean(axis=0)
+        best_idx = np.argmax(avg_scores)
+        weights = {name: 0.0 for name in self.models}
+        weights[self.models[best_idx]] = 1.0
+        return weights

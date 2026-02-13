@@ -8,7 +8,7 @@ metrics = {
 }
 
 class DynamicRouter:
-    def __init__(self, task, dtype, method='knn', metric="accuracy", mode="max", feature_extractor=None, **kwargs):
+    def __init__(self, task, dtype, method='knn', metric="accuracy", mode="max", feature_extractor=None, finder="knn", **kwargs):
         self.task = task.lower()
         self.dtype = dtype.lower()
         self.method = method.lower()
@@ -21,13 +21,30 @@ class DynamicRouter:
         self.kwargs = kwargs
         self.mode = mode.lower()
         self.feature_extractor = feature_extractor
+        self.finder = finder.lower()
         self.model, model_name = self.create_model()
 
     def create_model(self):
+        if self.finder == "knn":
+            from ensemble_weights.neighbors import KNNNeighborFinder
+            finder = KNNNeighborFinder(**self.kwargs)
+        elif self.finder == "faiss":
+            from ensemble_weights.neighbors import FaissNeighborFinder
+            finder = FaissNeighborFinder(**self.kwargs)
+        elif self.finder == "hnsw":
+            from ensemble_weights.neighbors import HNSWNeighborFinder
+            finder = HNSWNeighborFinder(**self.kwargs)
+        else:
+            raise ValueError(f"Unknown nn_backend: {self.finder}")
+
         if self.method == 'knn-dw':
             if self.dtype == 'tabular' or self.dtype == "image":
                 from ensemble_weights.models.knn import KNNModel
-                return KNNModel(metric=self.metric, mode=self.mode, **self.kwargs), 'KNN'
+                return KNNModel(metric=self.metric, mode=self.mode, neighbor_finder=finder), 'KNN-DW'
+        elif self.method == 'ola':
+            if self.dtype == 'tabular' or self.dtype == "image":
+                from ensemble_weights.models.ola import OLAModel
+                return OLAModel(metric=self.metric, mode=self.mode, neighbor_finder=finder), 'OLA'
         raise ValueError(f"Unsupported combination: method={self.method}, dtype={self.dtype}")
 
     def fit(self, features, y, preds_dict):

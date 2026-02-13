@@ -4,7 +4,7 @@ import numpy as np
 
 # Synthetic data (as before)
 np.random.seed(42)
-n = 1000
+n = 100000
 real_feature = np.random.randint(0, 2, n)
 y_true = np.random.randint(0, 2, n)
 pred_A = np.where(real_feature == 0, y_true, 1 - y_true)
@@ -20,9 +20,10 @@ df = pd.DataFrame({
 router = DynamicRouter(
     task='regression',
     dtype='tabular',
-    method='knn',
+    method='knn-dw',
     metric="accuracy",
     mode = 'max',
+    finder='knn',
     k=10
 )
 
