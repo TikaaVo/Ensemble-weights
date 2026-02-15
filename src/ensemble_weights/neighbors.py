@@ -1,68 +1,63 @@
-from abc import ABC, abstractmethod
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
+import warnings
 
 
-class NeighborFinder(ABC):
-    @abstractmethod
+class NeighborFinder:
+    """Base class for neighbor finders."""
+
     def fit(self, X):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
-    def kneighbors(self, X, k):
-        pass
+    def kneighbors(self, X, k=None):
+        raise NotImplementedError
 
 
 class KNNNeighborFinder(NeighborFinder):
+    """Exact nearest neighbors using sklearn."""
+
     def __init__(self, k=10, **kwargs):
         if k <= 0:
-            raise ValueError(f"k must be positive, got {k}")
+            raise ValueError(f"k must be positive, got k={k}")
         self.n_neighbors = k
         self.kwargs = kwargs
         self.model = None
 
     def fit(self, X):
+        from sklearn.neighbors import NearestNeighbors
         self.model = NearestNeighbors(n_neighbors=self.n_neighbors, **self.kwargs)
         self.model.fit(X)
+        return self
 
     def kneighbors(self, X, k=None):
+        """
+        Find k nearest neighbors.
+
+        ALWAYS returns (batch_size, k) shaped arrays.
+        """
         if k is None:
             k = self.n_neighbors
         X = np.atleast_2d(X)
-        single = (X.shape[0] == 1)
+
+        # Handle empty query
+        if X.shape[0] == 0:
+            return np.empty((0, k)), np.empty((0, k), dtype=np.int64)
+
         distances, indices = self.model.kneighbors(X, n_neighbors=k)
-        if single:
-            return distances[0], indices[0]
+
+        # FIXED: Always return 2D arrays, never collapse batch dimension
         return distances, indices
 
 
 class FaissNeighborFinder(NeighborFinder):
-    """FAISS-based nearest neighbor search.
-
-    Parameters
-    ----------
-    n_neighbors : int
-        Default number of neighbors.
-    index_type : str, default='flat'
-        Type of FAISS index: 'flat' (exact), 'ivf' (inverted file), or 'hnsw'.
-    n_cells : int, default=None
-        Number of Voronoi cells for IVF index. If None, auto-computed as sqrt(n_samples).
-    n_probes : int, default=50
-        Number of cells to probe during search (IVF only). Higher = more accurate.
-        Increased default from 10 to 50 for better recall.
-    hnsw_M : int, default=32
-        Number of neighbors per node in HNSW graph.
-    hnsw_efConstruction : int, default=400
-        Construction time accuracy/speed tradeoff for HNSW.
-        Increased default from 200 to 400 for better recall on large datasets.
-    hnsw_efSearch : int, default=200
-        Query time search depth for HNSW.
-    """
+    """FAISS-based approximate nearest neighbor search."""
 
     def __init__(self, k=10, index_type='flat', n_cells=None, n_probes=50,
                  hnsw_M=32, hnsw_efConstruction=400, hnsw_efSearch=200):
+        if k <= 0:
+            raise ValueError(f"k must be positive, got k={k}")
+
         self.n_neighbors = k
-        self.index_type = index_type
+        self.index_type = index_type.lower()
         self.n_cells = n_cells
         self.n_probes = n_probes
         self.hnsw_M = hnsw_M
@@ -76,112 +71,105 @@ class FaissNeighborFinder(NeighborFinder):
             import faiss
             self.faiss = faiss
         except ImportError:
-            raise ImportError("FAISS not installed. Please install with: pip install faiss-cpu")
+            raise ImportError(
+                "FAISS not found. Install with: pip install faiss-cpu"
+            )
 
     def fit(self, X):
-        X = np.ascontiguousarray(X, dtype=np.float32)
-        dim = X.shape[1]
-        n_samples = X.shape[0]
+        X = np.atleast_2d(X).astype(np.float32)
+        n_samples, dim = X.shape
 
-        # BUG FIX #2: Warn about low-dimensional data with FAISS Flat
+        # Warn about low dimensions
         if dim <= 2 and self.index_type == 'flat':
-            import warnings
             warnings.warn(
-                f"FAISS Flat may have precision issues in {dim}D due to floating-point "
-                f"arithmetic. For 1D or 2D data, consider using KNN (sklearn) instead.",
+                f"FAISS Flat may have precision issues in {dim}D due to "
+                f"floating-point arithmetic. Consider using sklearn KNN for "
+                f"low-dimensional data (<=2D).",
                 UserWarning
             )
 
         if self.index_type == 'flat':
+            # Exact search
             self.index_ = self.faiss.IndexFlatL2(dim)
+            self.index_.add(X)
+
         elif self.index_type == 'ivf':
-            # Auto-compute n_cells if not provided
+            # IVF index
             if self.n_cells is None:
                 self.n_cells = min(int(np.sqrt(n_samples)), 4096)
 
-            # BUG FIX #3: Validate n_probes is reasonable for good recall
-            min_probes = max(int(0.1 * self.n_cells), 10)
-            if self.n_probes < min_probes:
-                import warnings
+            # Validation: warn if n_probes is too low
+            if self.n_probes < self.n_cells * 0.1:
                 warnings.warn(
-                    f"n_probes={self.n_probes} is low for n_cells={self.n_cells}. "
-                    f"Expected recall may be poor (<80%). "
-                    f"For good recall (>95%), use n_probes >= {min_probes}",
+                    f"n_probes={self.n_probes} is less than 10% of n_cells={self.n_cells}. "
+                    f"This may result in poor recall. Consider increasing n_probes to at least "
+                    f"{int(self.n_cells * 0.1)}.",
                     UserWarning
                 )
 
             quantizer = self.faiss.IndexFlatL2(dim)
             self.index_ = self.faiss.IndexIVFFlat(quantizer, dim, self.n_cells)
-            # IVF requires training
             self.index_.train(X)
+            self.index_.add(X)
             self.index_.nprobe = self.n_probes
+
         elif self.index_type == 'hnsw':
-            # BUG FIX #4: Validate efConstruction for large datasets
-            min_ef_construction = max(self.hnsw_M * 8, 400) if n_samples > 10000 else 200
-            if self.hnsw_efConstruction < min_ef_construction:
-                import warnings
+            # HNSW index
+            if n_samples >= 10000 and self.hnsw_efConstruction < 300:
                 warnings.warn(
-                    f"hnsw_efConstruction={self.hnsw_efConstruction} may be too low "
-                    f"for {n_samples} samples. Expected recall may be poor. "
-                    f"For good recall (>95%), use hnsw_efConstruction >= {min_ef_construction}",
+                    f"For dataset with {n_samples} samples, ef_construction={self.hnsw_efConstruction} "
+                    f"may be too low. Consider using ef_construction >= 400 for better recall.",
                     UserWarning
                 )
 
             self.index_ = self.faiss.IndexHNSWFlat(dim, self.hnsw_M)
             self.index_.hnsw.efConstruction = self.hnsw_efConstruction
-            # BUG FIX #4: Also set efSearch for queries
             self.index_.hnsw.efSearch = self.hnsw_efSearch
+            self.index_.add(X)
+
         else:
             raise ValueError(f"Unknown index_type: {self.index_type}")
 
-        self.index_.add(X)
         return self
 
     def kneighbors(self, X, k=None):
+        """
+        Find k nearest neighbors.
+
+        ALWAYS returns (batch_size, k) shaped arrays.
+        """
         if k is None:
             k = self.n_neighbors
 
         X = np.atleast_2d(X).astype(np.float32)
-        single = (X.shape[0] == 1)
+
+        # Handle empty query
+        if X.shape[0] == 0:
+            return np.empty((0, k), dtype=np.float32), np.empty((0, k), dtype=np.int64)
+
         distances, indices = self.index_.search(X, k)
+        distances = np.sqrt(distances)  # FAISS returns squared distances
 
-        # FAISS returns squared L2 distances; convert to Euclidean if desired
-        distances = np.sqrt(distances)
-
-        if single:
-            return distances[0], indices[0]
+        # FIXED: Always return 2D arrays, never collapse batch dimension
         return distances, indices
 
 
 class AnnoyNeighborFinder(NeighborFinder):
-    """Annoy-based approximate nearest neighbor search.
-
-    Parameters
-    ----------
-    n_neighbors : int
-        Default number of neighbors.
-    n_trees : int, default=100
-        Number of trees in the forest. More trees = higher accuracy, larger index.
-        For large datasets (>1M), use 100-200 trees.
-    metric : str, default='euclidean'
-        Distance metric. Options: 'euclidean', 'angular', 'manhattan', 'hamming', 'dot'.
-    search_k : int, default=-1
-        Number of nodes to inspect during search.
-        -1 means auto: max(n_trees * n_neighbors * 50, 10000).
-        Higher = more accurate but slower.
-        Increased multiplier from 10 to 50 for better recall.
-    """
+    """Annoy-based approximate nearest neighbor search."""
 
     def __init__(self, k=10, n_trees=100, metric='euclidean', search_k=-1):
+        if k <= 0:
+            raise ValueError(f"k must be positive, got k={k}")
+
         self.k = k
         self.n_trees = n_trees
         self.metric = metric
-        # BUG FIX #1: Much higher default for search_k
-        # Increased multiplier from 10 to 50, and added minimum of 10000
+
         if search_k == -1:
             self.search_k = max(n_trees * k * 50, 10000)
         else:
             self.search_k = search_k
+
         self.index_ = None
         self._check_availability()
 
@@ -190,19 +178,20 @@ class AnnoyNeighborFinder(NeighborFinder):
             from annoy import AnnoyIndex
             self.AnnoyIndex = AnnoyIndex
         except ImportError:
-            raise ImportError("Annoy not installed. Install with: pip install annoy")
+            raise ImportError(
+                "Annoy not found. Install with: pip install annoy"
+            )
 
     def fit(self, X):
-        dim = X.shape[1]
-        n_samples = X.shape[0]
+        X = np.atleast_2d(X)
+        n_samples, dim = X.shape
 
-        # BUG FIX #1: Warn about low-dimensional data
+        # Warn about low dimensions
         if dim <= 3:
-            import warnings
             warnings.warn(
-                f"Annoy may have poor performance in {dim}D. "
-                f"Tree structure can degenerate in low dimensions. "
-                f"Consider using KNN or FAISS Flat for low-dimensional data.",
+                f"Annoy may have poor performance in {dim}D. Tree structure can "
+                f"degenerate in low dimensions. Consider using KNN or FAISS Flat "
+                f"for low-dimensional data (<=3D).",
                 UserWarning
             )
 
@@ -225,11 +214,20 @@ class AnnoyNeighborFinder(NeighborFinder):
         return self
 
     def kneighbors(self, X, k=None):
+        """
+        Find k nearest neighbors.
+
+        ALWAYS returns (batch_size, k) shaped arrays.
+        """
         if k is None:
             k = self.k
 
         X = np.atleast_2d(X)
-        single = (X.shape[0] == 1)
+
+        # Handle empty query
+        if X.shape[0] == 0:
+            return np.empty((0, k)), np.empty((0, k), dtype=np.int64)
+
         all_indices = []
         all_distances = []
 
@@ -240,7 +238,6 @@ class AnnoyNeighborFinder(NeighborFinder):
                 include_distances=True
             )
 
-            # BUG FIX #1: Validate that Annoy returned k neighbors
             if len(idx) != k:
                 raise ValueError(
                     f"Annoy only returned {len(idx)} neighbors out of {k} requested. "
@@ -253,38 +250,18 @@ class AnnoyNeighborFinder(NeighborFinder):
             all_indices.append(idx)
             all_distances.append(dist)
 
-        if single:
-            return np.array(all_distances[0]), np.array(all_indices[0])
+        # FIXED: Always return 2D arrays, never collapse batch dimension
         return np.array(all_distances), np.array(all_indices)
 
 
 class HNSWNeighborFinder(NeighborFinder):
-    """HNSW-based approximate nearest neighbor search.
-
-    Parameters
-    ----------
-    n_neighbors : int
-        Default number of neighbors.
-    space : str, default='l2'
-        Distance space. Common options: 'l2', 'cosinesimil', 'ip' (inner product).
-    M : int, default=32
-        Number of bi-directional links per element.
-        Higher = more accurate but slower and more memory.
-        Recommended: 16-64 depending on dataset size.
-    ef_construction : int, default=400
-        Size of the dynamic list for the nearest neighbors during index construction.
-        Higher = more accurate index but slower to build.
-        Increased default from 200 to 400 for better recall on large datasets.
-    ef_search : int, default=200
-        Size of the dynamic list during search.
-        Higher = more accurate but slower queries.
-    backend : str, default='hnswlib'
-        Which library to use: 'nmslib' or 'hnswlib'.
-        hnswlib is generally faster for large datasets.
-    """
+    """HNSW-based approximate nearest neighbor search."""
 
     def __init__(self, k=10, space='l2', M=32, ef_construction=400,
                  ef_search=200, backend='hnswlib'):
+        if k <= 0:
+            raise ValueError(f"k must be positive, got k={k}")
+
         self.n_neighbors = k
         self.space = space
         self.M = M
@@ -295,79 +272,97 @@ class HNSWNeighborFinder(NeighborFinder):
         self._check_availability()
 
     def _check_availability(self):
-        if self.backend == 'nmslib':
-            try:
-                import nmslib
-                self.nmslib = nmslib
-            except ImportError:
-                raise ImportError("nmslib not installed. Install with: pip install nmslib")
-        elif self.backend == 'hnswlib':
+        if self.backend == 'hnswlib':
             try:
                 import hnswlib
                 self.hnswlib = hnswlib
             except ImportError:
-                raise ImportError("hnswlib not installed. Install with: pip install hnswlib")
+                raise ImportError(
+                    "hnswlib not found. Install with: pip install hnswlib"
+                )
+        elif self.backend == 'nmslib':
+            try:
+                import nmslib
+                self.nmslib = nmslib
+            except ImportError:
+                raise ImportError(
+                    "nmslib not found. Install with: pip install nmslib"
+                )
         else:
             raise ValueError(f"Unknown backend: {self.backend}")
 
     def fit(self, X):
-        X = np.asarray(X, dtype=np.float32)
-        n_samples = X.shape[0]
+        X = np.atleast_2d(X).astype(np.float32)
+        n_samples, dim = X.shape
 
-        # BUG FIX #5: Validate ef_construction for large datasets
-        min_ef_construction = max(self.M * 8, 400) if n_samples > 10000 else 200
-        if self.ef_construction < min_ef_construction:
-            import warnings
+        # Warn about low ef_construction for large datasets
+        if n_samples >= 10000 and self.ef_construction < 300:
             warnings.warn(
-                f"ef_construction={self.ef_construction} may be too low "
-                f"for {n_samples} samples. Expected recall may be poor. "
-                f"For good recall (>95%), use ef_construction >= {min_ef_construction}",
+                f"For dataset with {n_samples} samples, ef_construction={self.ef_construction} "
+                f"may be too low. Consider using ef_construction >= 400 for better recall.",
                 UserWarning
             )
 
-        if self.backend == 'nmslib':
-            # nmslib method space strings: 'l2', 'cosinesimil', 'ip', etc.
-            self.index_ = self.nmslib.init(method='hnsw', space=self.space)
-            self.index_.addDataPointBatch(X)
-            self.index_.createIndex({
-                'M': self.M,
-                'efConstruction': self.ef_construction,
-                'post': 0  # BUG FIX #5: Disable post-processing for consistent behavior
-            }, print_progress=False)
-            # BUG FIX #5: Set query-time ef parameter
-            self.index_.setQueryTimeParams({'ef': self.ef_search})
-        else:  # hnswlib
-            dim = X.shape[1]
+        if self.backend == 'hnswlib':
             self.index_ = self.hnswlib.Index(space=self.space, dim=dim)
-            self.index_.init_index(max_elements=X.shape[0],
-                                   ef_construction=self.ef_construction,
-                                   M=self.M)
-            self.index_.add_items(X)
-            # BUG FIX #5: Make sure ef is set for queries
+            self.index_.init_index(
+                max_elements=n_samples,
+                M=self.M,
+                ef_construction=self.ef_construction
+            )
             self.index_.set_ef(self.ef_search)
+            self.index_.add_items(X, np.arange(n_samples))
+
+        elif self.backend == 'nmslib':
+            space_map = {'l2': 'l2', 'cosine': 'cosinesimil', 'ip': 'negdotprod'}
+            nms_space = space_map.get(self.space, 'l2')
+
+            self.index_ = self.nmslib.init(
+                method='hnsw',
+                space=nms_space,
+                data_type=self.nmslib.DataType.DENSE_VECTOR
+            )
+            self.index_.addDataPointBatch(X)
+            self.index_.createIndex(
+                {
+                    'M': self.M,
+                    'efConstruction': self.ef_construction,
+                    'post': 0
+                },
+                print_progress=False
+            )
+            self.index_.setQueryTimeParams({'efSearch': self.ef_search})
+
         return self
 
     def kneighbors(self, X, k=None):
+        """
+        Find k nearest neighbors.
+
+        ALWAYS returns (batch_size, k) shaped arrays.
+        """
         if k is None:
             k = self.n_neighbors
 
         X = np.atleast_2d(X).astype(np.float32)
-        single = (X.shape[0] == 1)
+
+        # Handle empty query
+        if X.shape[0] == 0:
+            return np.empty((0, k), dtype=np.float32), np.empty((0, k), dtype=np.int64)
 
         if self.backend == 'nmslib':
             results = self.index_.knnQueryBatch(X, k=k)
-            # results is a list of (indices, distances) tuples
             all_indices = []
             all_distances = []
             for idx, dist in results:
                 all_indices.append(np.array(idx))
                 all_distances.append(np.array(dist))
-            if single:
-                return all_distances[0], all_indices[0]
-            else:
-                return np.array(all_distances), np.array(all_indices)
+
+            # FIXED: Always return 2D arrays
+            return np.array(all_distances), np.array(all_indices)
         else:  # hnswlib
+            # hnswlib returns (batch_size, k) by default
             indices, distances = self.index_.knn_query(X, k=k)
-            if single:
-                return distances[0], indices[0]
+
+            # FIXED: Always return 2D arrays
             return distances, indices

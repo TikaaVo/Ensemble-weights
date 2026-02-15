@@ -245,7 +245,7 @@ ______________ TestDynamicRouterIntegration.test_preset_balanced _______________
 test.py:450: in test_preset_balanced
     weights = router.predict(test_features[i:i+1])
               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-../src/ensemble_weights/__init__.py:229: in predict
+../src/ensemble_weights/__init__.py:223: in predict
     return self.model.predict(x, temperature)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ../src/ensemble_weights/models/knn.py:44: in predict
@@ -265,7 +265,7 @@ __________ TestDynamicRouterIntegration.test_from_data_size_high_dim ___________
 test.py:537: in test_from_data_size_high_dim
     assert 'high_dim' in router.preset
 E   AssertionError: assert 'high_dim' in 'balanced'
-E    +  where 'balanced' = <ensemble_weights.__init__.DynamicRouter object at 0x1201cf1d0>.preset
+E    +  where 'balanced' = <ensemble_weights.__init__.DynamicRouter object at 0x10d8b70b0>.preset
 ----------------------------- Captured stdout call -----------------------------
 Auto-selected preset: 'balanced'
 Reason: Medium dataset (10K-100K samples) - balanced speed/accuracy
@@ -298,4 +298,4 @@ tests/test.py::TestAnnoyFinder::test_returns_exactly_k_neighbors[10000-1]
 FAILED test.py::TestFAISSIVF::test_high_recall_with_enough_probes[10000-100]
 FAILED test.py::TestDynamicRouterIntegration::test_preset_balanced - numpy.ex...
 FAILED test.py::TestDynamicRouterIntegration::test_from_data_size_high_dim - ...
-============ 3 failed, 146 passed, 78 skipped, 9 warnings in 14.11s ============
+============ 3 failed, 146 passed, 78 skipped, 9 warnings in 14.17s ============
