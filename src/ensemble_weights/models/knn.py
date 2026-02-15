@@ -1,6 +1,7 @@
 from ensemble_weights.base import BaseRouter
 import numpy as np
 
+
 class KNNModel(BaseRouter):
     def __init__(self, metric, mode="max", neighbor_finder=None):
         self.metric = metric
@@ -19,19 +20,33 @@ class KNNModel(BaseRouter):
 
         for j, name in enumerate(self.models):
             preds = preds_dict[name]
-            for i in range(n_val):
-                score = self.metric(y[i], preds[i])
-                if self.mode == "max":
-                    self.matrix[i,j] = score
-                else:
-                    self.matrix[i,j] = -score
+            try:
+                scores = self.metric(y, preds)
+            except (ValueError, TypeError):
+                v_metric = np.vectorize(self.metric)
+                scores = v_metric(y, preds)
+
+            if self.mode == "max":
+                self.matrix[:, j] = scores
+            else:
+                self.matrix[:, j] = -scores
 
         self.model.fit(features)
 
     def predict(self, x, temperature=1.0):
-        distances, indices = self.model.kneighbors(x.reshape(1,-1))
-        scores = self.matrix[indices]
-        avg_scores = scores.mean(axis=0)
-        exp_scores = np.exp((avg_scores - avg_scores.max()) / temperature)
-        weights = exp_scores / exp_scores.sum()
-        return dict(zip(self.models, weights))
+        x = np.atleast_2d(x)
+        batch_size = x.shape[0]
+
+        distances, indices = self.model.kneighbors(x)
+        neighbor_scores = self.matrix[indices]
+        avg_scores = neighbor_scores.mean(axis=1)
+
+        max_scores = np.max(avg_scores, axis=1, keepdims=True)
+        exp_scores = np.exp((avg_scores - max_scores) / temperature)
+
+        weights = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+
+        if batch_size == 1:
+            return dict(zip(self.models, weights[0]))
+
+        return [dict(zip(self.models, w)) for w in weights]

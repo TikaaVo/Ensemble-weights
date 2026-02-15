@@ -1,0 +1,98 @@
+================================================================================
+  STRESS TESTS & EDGE CASES
+================================================================================
+
+================================================================================
+  STRESS TESTS
+================================================================================
+
+--- Very High K Test ---
+[92m✓[0m Very high k (k=950/1000)
+  → Shape: (5, 950)
+
+--- K Equals N Test ---
+[92m✓[0m k equals n_samples
+  → Shape: (5, 100)
+
+--- Single Training Sample Test ---
+[92m✓[0m Single training sample
+  → All returned index 0: True
+
+--- Very High Dimensions Test ---
+[92m✓[0m KNN with 5000D
+[92m✓[0m FAISS Flat with 5000D
+
+--- Duplicate Features Test ---
+[92m✓[0m Finds exact duplicates
+  → Min distance: 0.0000000000
+
+--- Constant Features Test ---
+[92m✓[0m Constant features
+  → Max distance: 0.0000000000
+
+--- Large Scale Annoy Test ---
+[91m✗[0m Annoy 50K samples
+  → Annoy only returned 1 neighbors out of 10 requested. This usually means the index has connectivity issues. Try: (1) Increasing n_trees (current: 100), (2) Increasing search_k (current: 50000), or (3) Using a different neighbor finder for this data.
+
+================================================================================
+  EDGE CASE TESTS
+================================================================================
+
+--- Mismatched Dimensions Test ---
+[92m✓[0m Catches dimension mismatch
+  → Properly raised error
+
+--- Negative K Test ---
+[92m✓[0m Rejects negative k
+  → Properly raised error
+
+--- Zero K Test ---
+[92m✓[0m Rejects k=0
+  → Properly raised error
+
+--- NaN in Data Test ---
+[92m✓[0m Catches NaN
+  → Properly raised error
+
+--- Inf in Data Test ---
+[92m✓[0m Handles Inf
+  → Raised error (acceptable): ValueError
+
+--- Empty Query Test ---
+[91m✗[0m Empty query
+  → Found array with 0 sample(s) (shape=(0, 10)) while a minimum of 1 is required by NearestNeighbors.
+
+================================================================================
+  WARNING TESTS
+================================================================================
+
+--- Low n_probes Warning Test ---
+[92m✓[0m Low n_probes warning
+  → Got 1 warnings
+
+--- Low ef_construction Warning Test ---
+[92m✓[0m Low ef_construction warning
+  → Got 1 warnings
+
+================================================================================
+  SUMMARY
+================================================================================
+[92m✓[0m Very high k
+[92m✓[0m k equals n
+[92m✓[0m Single training sample
+[92m✓[0m Very high dimensions
+[92m✓[0m Duplicate features
+[92m✓[0m Constant features
+[91m✗[0m Large scale Annoy
+[92m✓[0m Mismatched dimensions
+[92m✓[0m Negative k
+[92m✓[0m Zero k
+[92m✓[0m NaN in data
+[92m✓[0m Inf in data
+[91m✗[0m Empty query
+[92m✓[0m Low n_probes warning
+[92m✓[0m Low ef_construction warning
+
+PASSED: 13/15 tests
+
+⚠️  Some tests failed - this may be expected for edge cases
