@@ -11,27 +11,29 @@ class OLAModel(BaseRouter):
         self.models = None
         self.features = None
 
+    def _compute_scores(self, y, preds):
+        """
+        Compute per-sample scores, always returning a 1D array of length n_samples.
+
+        Vectorizes unconditionally rather than using a try/except fallback.
+        This avoids the silent slow path and is consistent across all metrics.
+        """
+        v_metric = np.vectorize(self.metric)
+        return v_metric(y, preds)
+
     def fit(self, features, y, preds_dict):
         self.features = features
         self.models = list(preds_dict.keys())
         n_val = len(y)
         n_models = len(self.models)
-
         self.matrix = np.zeros((n_val, n_models))
 
         for j, name in enumerate(self.models):
             preds = preds_dict[name]
+            scores = self._compute_scores(y, preds)
 
-            try:
-                scores = self.metric(y, preds)
-            except (ValueError, TypeError):
-                v_metric = np.vectorize(self.metric)
-                scores = v_metric(y, preds)
-
-            if self.mode == "max":
-                self.matrix[:, j] = scores
-            else:
-                self.matrix[:, j] = -scores
+            # Negate for minimization metrics so argmax logic stays uniform
+            self.matrix[:, j] = scores if self.mode == "max" else -scores
 
         self.model.fit(features)
 
@@ -40,10 +42,15 @@ class OLAModel(BaseRouter):
         batch_size = x.shape[0]
 
         distances, indices = self.model.kneighbors(x)
-        neighbor_scores = self.matrix[indices]
-        avg_scores = neighbor_scores.mean(axis=1)
-        best_indices = np.argmax(avg_scores, axis=1)
 
+        # indices shape: (batch_size, k)
+        # matrix shape: (n_val, n_models)
+        # neighbor_scores shape: (batch_size, k, n_models)
+        neighbor_scores = self.matrix[indices]
+        avg_scores = neighbor_scores.mean(axis=1)  # (batch_size, n_models)
+
+        # OLA: hard assignment to single best model per sample
+        best_indices = np.argmax(avg_scores, axis=1)  # (batch_size,)
         weights_array = np.zeros((batch_size, len(self.models)))
         weights_array[np.arange(batch_size), best_indices] = 1.0
 

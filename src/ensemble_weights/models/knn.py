@@ -11,6 +11,16 @@ class KNNModel(BaseRouter):
         self.models = None
         self.features = None
 
+    def _compute_scores(self, y, preds):
+        """
+        Compute per-sample scores, always returning a 1D array of length n_samples.
+
+        Vectorizes unconditionally rather than using a try/except fallback.
+        This avoids the silent slow path and is consistent across all metrics.
+        """
+        v_metric = np.vectorize(self.metric)
+        return v_metric(y, preds)
+
     def fit(self, features, y, preds_dict):
         self.features = features
         self.models = list(preds_dict.keys())
@@ -20,16 +30,10 @@ class KNNModel(BaseRouter):
 
         for j, name in enumerate(self.models):
             preds = preds_dict[name]
-            try:
-                scores = self.metric(y, preds)
-            except (ValueError, TypeError):
-                v_metric = np.vectorize(self.metric)
-                scores = v_metric(y, preds)
+            scores = self._compute_scores(y, preds)
 
-            if self.mode == "max":
-                self.matrix[:, j] = scores
-            else:
-                self.matrix[:, j] = -scores
+            # Negate for minimization metrics so argmax/softmax logic stays uniform
+            self.matrix[:, j] = scores if self.mode == "max" else -scores
 
         self.model.fit(features)
 
@@ -38,13 +42,17 @@ class KNNModel(BaseRouter):
         batch_size = x.shape[0]
 
         distances, indices = self.model.kneighbors(x)
+
+        # indices shape: (batch_size, k)
+        # matrix shape: (n_val, n_models)
+        # neighbor_scores shape: (batch_size, k, n_models)
         neighbor_scores = self.matrix[indices]
-        avg_scores = neighbor_scores.mean(axis=1)
+        avg_scores = neighbor_scores.mean(axis=1)  # (batch_size, n_models)
 
-        max_scores = np.max(avg_scores, axis=1, keepdims=True)
+        # Numerically stable softmax with temperature scaling
+        max_scores = avg_scores.max(axis=1, keepdims=True)
         exp_scores = np.exp((avg_scores - max_scores) / temperature)
-
-        weights = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        weights = exp_scores / exp_scores.sum(axis=1, keepdims=True)
 
         if batch_size == 1:
             return dict(zip(self.models, weights[0]))

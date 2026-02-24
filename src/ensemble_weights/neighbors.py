@@ -2,6 +2,11 @@ import numpy as np
 import warnings
 
 
+# Minimum ratio of samples-to-cells required for FAISS IVF k-means to converge.
+# FAISS documentation recommends 39x; we use a slightly larger value for safety.
+_FAISS_MIN_SAMPLES_PER_CELL = 40
+
+
 class NeighborFinder:
     """Base class for neighbor finders."""
 
@@ -24,6 +29,15 @@ class KNNNeighborFinder(NeighborFinder):
 
     def fit(self, X):
         from sklearn.neighbors import NearestNeighbors
+        X = np.atleast_2d(X)
+        n_samples = X.shape[0]
+
+        if n_samples < self.n_neighbors:
+            raise ValueError(
+                f"Cannot find {self.n_neighbors} neighbors in a dataset with only "
+                f"{n_samples} samples. Reduce k to at most {n_samples}."
+            )
+
         self.model = NearestNeighbors(n_neighbors=self.n_neighbors, **self.kwargs)
         self.model.fit(X)
         return self
@@ -31,20 +45,16 @@ class KNNNeighborFinder(NeighborFinder):
     def kneighbors(self, X, k=None):
         """
         Find k nearest neighbors.
-
-        ALWAYS returns (batch_size, k) shaped arrays.
+        Always returns (batch_size, k) shaped arrays.
         """
         if k is None:
             k = self.n_neighbors
         X = np.atleast_2d(X)
 
-        # Handle empty query
         if X.shape[0] == 0:
             return np.empty((0, k)), np.empty((0, k), dtype=np.int64)
 
         distances, indices = self.model.kneighbors(X, n_neighbors=k)
-
-        # FIXED: Always return 2D arrays, never collapse batch dimension
         return distances, indices
 
 
@@ -79,31 +89,57 @@ class FaissNeighborFinder(NeighborFinder):
         X = np.atleast_2d(X).astype(np.float32)
         n_samples, dim = X.shape
 
-        # Warn about low dimensions
+        if n_samples < self.n_neighbors:
+            raise ValueError(
+                f"Cannot find {self.n_neighbors} neighbors in a dataset with only "
+                f"{n_samples} samples. Reduce k to at most {n_samples}."
+            )
+
         if dim <= 2 and self.index_type == 'flat':
             warnings.warn(
                 f"FAISS Flat may have precision issues in {dim}D due to "
-                f"floating-point arithmetic. Consider using sklearn KNN for "
-                f"low-dimensional data (<=2D).",
+                f"floating-point arithmetic. Consider using KNNNeighborFinder "
+                f"for low-dimensional data (<=2D).",
                 UserWarning
             )
 
         if self.index_type == 'flat':
-            # Exact search
             self.index_ = self.faiss.IndexFlatL2(dim)
             self.index_.add(X)
 
         elif self.index_type == 'ivf':
-            # IVF index
             if self.n_cells is None:
                 self.n_cells = min(int(np.sqrt(n_samples)), 4096)
 
-            # Validation: warn if n_probes is too low
-            if self.n_probes < self.n_cells * 0.1:
+            # FIX: FAISS IVF k-means requires ~40x samples per cell or training
+            # will fail to converge and hang indefinitely.
+            min_required = self.n_cells * _FAISS_MIN_SAMPLES_PER_CELL
+            if n_samples < min_required:
+                safe_cells = max(1, n_samples // _FAISS_MIN_SAMPLES_PER_CELL)
                 warnings.warn(
-                    f"n_probes={self.n_probes} is less than 10% of n_cells={self.n_cells}. "
+                    f"n_cells={self.n_cells} requires at least {min_required} training "
+                    f"samples for FAISS IVF k-means to converge, but only {n_samples} "
+                    f"were provided. Reducing n_cells from {self.n_cells} to {safe_cells} "
+                    f"to prevent hanging. Consider using index_type='flat' or switching "
+                    f"to KNNNeighborFinder for small datasets.",
+                    UserWarning
+                )
+                self.n_cells = safe_cells
+
+            # Clamp n_probes to n_cells so FAISS doesn't silently degrade
+            effective_probes = min(self.n_probes, self.n_cells)
+            if effective_probes < self.n_probes:
+                warnings.warn(
+                    f"n_probes={self.n_probes} exceeds n_cells={self.n_cells}. "
+                    f"Clamping n_probes to {self.n_cells}.",
+                    UserWarning
+                )
+
+            if effective_probes < self.n_cells * 0.1:
+                warnings.warn(
+                    f"n_probes={effective_probes} is less than 10% of n_cells={self.n_cells}. "
                     f"This may result in poor recall. Consider increasing n_probes to at least "
-                    f"{int(self.n_cells * 0.1)}.",
+                    f"{max(1, int(self.n_cells * 0.1))}.",
                     UserWarning
                 )
 
@@ -111,14 +147,14 @@ class FaissNeighborFinder(NeighborFinder):
             self.index_ = self.faiss.IndexIVFFlat(quantizer, dim, self.n_cells)
             self.index_.train(X)
             self.index_.add(X)
-            self.index_.nprobe = self.n_probes
+            self.index_.nprobe = effective_probes
 
         elif self.index_type == 'hnsw':
-            # HNSW index
             if n_samples >= 10000 and self.hnsw_efConstruction < 300:
                 warnings.warn(
-                    f"For dataset with {n_samples} samples, ef_construction={self.hnsw_efConstruction} "
-                    f"may be too low. Consider using ef_construction >= 400 for better recall.",
+                    f"For a dataset with {n_samples} samples, "
+                    f"ef_construction={self.hnsw_efConstruction} may be too low. "
+                    f"Consider ef_construction >= 400 for better recall.",
                     UserWarning
                 )
 
@@ -135,22 +171,19 @@ class FaissNeighborFinder(NeighborFinder):
     def kneighbors(self, X, k=None):
         """
         Find k nearest neighbors.
-
-        ALWAYS returns (batch_size, k) shaped arrays.
+        Always returns (batch_size, k) shaped arrays.
         """
         if k is None:
             k = self.n_neighbors
 
         X = np.atleast_2d(X).astype(np.float32)
 
-        # Handle empty query
         if X.shape[0] == 0:
             return np.empty((0, k), dtype=np.float32), np.empty((0, k), dtype=np.int64)
 
         distances, indices = self.index_.search(X, k)
-        distances = np.sqrt(distances)  # FAISS returns squared distances
+        distances = np.sqrt(np.maximum(distances, 0))  # FIX: clamp negatives before sqrt
 
-        # FIXED: Always return 2D arrays, never collapse batch dimension
         return distances, indices
 
 
@@ -165,12 +198,17 @@ class AnnoyNeighborFinder(NeighborFinder):
         self.n_trees = n_trees
         self.metric = metric
 
+        # FIX: The previous formula (n_trees * k * 50) produced search_k values
+        # up to 50,000+, causing near-freezes on large batch predictions.
+        # Annoy's own recommended default is n_trees * k, which gives good
+        # recall without the excessive cost. Users can still override explicitly.
         if search_k == -1:
-            self.search_k = max(n_trees * k * 50, 10000)
+            self.search_k = n_trees * k
         else:
             self.search_k = search_k
 
         self.index_ = None
+        self.n_samples_ = None
         self._check_availability()
 
     def _check_availability(self):
@@ -185,12 +223,18 @@ class AnnoyNeighborFinder(NeighborFinder):
     def fit(self, X):
         X = np.atleast_2d(X)
         n_samples, dim = X.shape
+        self.n_samples_ = n_samples
 
-        # Warn about low dimensions
+        if n_samples < self.k:
+            raise ValueError(
+                f"Cannot find {self.k} neighbors in a dataset with only "
+                f"{n_samples} samples. Reduce k to at most {n_samples}."
+            )
+
         if dim <= 3:
             warnings.warn(
                 f"Annoy may have poor performance in {dim}D. Tree structure can "
-                f"degenerate in low dimensions. Consider using KNN or FAISS Flat "
+                f"degenerate in low dimensions. Consider using KNNNeighborFinder "
                 f"for low-dimensional data (<=3D).",
                 UserWarning
             )
@@ -216,15 +260,13 @@ class AnnoyNeighborFinder(NeighborFinder):
     def kneighbors(self, X, k=None):
         """
         Find k nearest neighbors.
-
-        ALWAYS returns (batch_size, k) shaped arrays.
+        Always returns (batch_size, k) shaped arrays.
         """
         if k is None:
             k = self.k
 
         X = np.atleast_2d(X)
 
-        # Handle empty query
         if X.shape[0] == 0:
             return np.empty((0, k)), np.empty((0, k), dtype=np.int64)
 
@@ -240,17 +282,17 @@ class AnnoyNeighborFinder(NeighborFinder):
 
             if len(idx) != k:
                 raise ValueError(
-                    f"Annoy only returned {len(idx)} neighbors out of {k} requested. "
-                    f"This usually means the index has connectivity issues. "
+                    f"Annoy returned {len(idx)} neighbors but {k} were requested. "
+                    f"This typically means the index has fewer items than k, or there "
+                    f"are connectivity issues. "
                     f"Try: (1) Increasing n_trees (current: {self.n_trees}), "
                     f"(2) Increasing search_k (current: {self.search_k}), or "
-                    f"(3) Using a different neighbor finder for this data."
+                    f"(3) Using KNNNeighborFinder for this dataset."
                 )
 
             all_indices.append(idx)
             all_distances.append(dist)
 
-        # FIXED: Always return 2D arrays, never collapse batch dimension
         return np.array(all_distances), np.array(all_indices)
 
 
@@ -295,11 +337,17 @@ class HNSWNeighborFinder(NeighborFinder):
         X = np.atleast_2d(X).astype(np.float32)
         n_samples, dim = X.shape
 
-        # Warn about low ef_construction for large datasets
+        if n_samples < self.n_neighbors:
+            raise ValueError(
+                f"Cannot find {self.n_neighbors} neighbors in a dataset with only "
+                f"{n_samples} samples. Reduce k to at most {n_samples}."
+            )
+
         if n_samples >= 10000 and self.ef_construction < 300:
             warnings.warn(
-                f"For dataset with {n_samples} samples, ef_construction={self.ef_construction} "
-                f"may be too low. Consider using ef_construction >= 400 for better recall.",
+                f"For a dataset with {n_samples} samples, "
+                f"ef_construction={self.ef_construction} may be too low. "
+                f"Consider ef_construction >= 400 for better recall.",
                 UserWarning
             )
 
@@ -338,15 +386,13 @@ class HNSWNeighborFinder(NeighborFinder):
     def kneighbors(self, X, k=None):
         """
         Find k nearest neighbors.
-
-        ALWAYS returns (batch_size, k) shaped arrays.
+        Always returns (batch_size, k) shaped arrays.
         """
         if k is None:
             k = self.n_neighbors
 
         X = np.atleast_2d(X).astype(np.float32)
 
-        # Handle empty query
         if X.shape[0] == 0:
             return np.empty((0, k), dtype=np.float32), np.empty((0, k), dtype=np.int64)
 
@@ -357,12 +403,8 @@ class HNSWNeighborFinder(NeighborFinder):
             for idx, dist in results:
                 all_indices.append(np.array(idx))
                 all_distances.append(np.array(dist))
-
-            # FIXED: Always return 2D arrays
             return np.array(all_distances), np.array(all_indices)
-        else:  # hnswlib
-            # hnswlib returns (batch_size, k) by default
-            indices, distances = self.index_.knn_query(X, k=k)
 
-            # FIXED: Always return 2D arrays
+        else:  # hnswlib
+            indices, distances = self.index_.knn_query(X, k=k)
             return distances, indices
