@@ -35,6 +35,17 @@ class KNNModel(BaseRouter):
             # Negate for minimization metrics so argmax/softmax logic stays uniform
             self.matrix[:, j] = scores if self.mode == "max" else -scores
 
+        # Normalize the full matrix to [0, 1] globally.
+        # Without this, metrics with large absolute values (e.g. MAE on house prices
+        # in the tens of thousands) cause softmax to collapse to one-hot for every
+        # sample, making knn-dw indistinguishable from OLA regardless of temperature.
+        # Global normalization (vs per-column) preserves cross-model comparability:
+        # a model that is bad everywhere stays worse than one that is good everywhere.
+        mat_min = self.matrix.min()
+        mat_max = self.matrix.max()
+        if mat_max > mat_min:
+            self.matrix = (self.matrix - mat_min) / (mat_max - mat_min)
+
         self.model.fit(features)
 
     def predict(self, x, temperature=1.0):

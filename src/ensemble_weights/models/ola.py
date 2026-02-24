@@ -35,6 +35,14 @@ class OLAModel(BaseRouter):
             # Negate for minimization metrics so argmax logic stays uniform
             self.matrix[:, j] = scores if self.mode == "max" else -scores
 
+        # Normalize to [0, 1] globally for consistency with KNNModel.
+        # OLA uses argmax so normalization doesn't change which model is selected,
+        # but it keeps the stored matrix interpretable and future-proof.
+        mat_min = self.matrix.min()
+        mat_max = self.matrix.max()
+        if mat_max > mat_min:
+            self.matrix = (self.matrix - mat_min) / (mat_max - mat_min)
+
         self.model.fit(features)
 
     def predict(self, x, temperature=1.0):
