@@ -2,7 +2,8 @@
 Dynamic Ensemble Selection library.
 
 Main entry point: DynamicRouter.
-Supports knn-dw (soft per-sample weighting) and OLA (hard per-sample selection),
+Supports knn-dws (soft per-sample weighting), knora-u (vote-based selection),
+and OLA (hard per-sample selection),
 with pluggable neighbor finders for exact and approximate search.
 """
 from ensemble_weights.utils import to_numpy, add_batch_dim
@@ -69,7 +70,8 @@ class DynamicRouter:
     dtype : str
         Input data type: 'tabular' or 'image'.
     method : str
-        'knn-dw' for soft blending or 'ola' for hard selection.
+        'knn-dws' for soft blending, 'knora-u' for vote-based selection,
+        'knora-e' for intersection-based selection, or 'ola' for hard selection.
     metric : str or callable
         Per-sample scoring function. Built-in names: 'accuracy', 'mae', 'mse',
         'rmse'. Or any callable with signature (y_true, y_pred) -> float.
@@ -223,12 +225,23 @@ class DynamicRouter:
         else:
             raise ValueError(f"Unknown finder: {self.finder}")
 
-        if self.method == 'knn-dw' and self.dtype in ('tabular', 'image'):
-            from ensemble_weights.models.knn import KNNModel
-            return KNNModel(
+        if self.method == 'knn-dws' and self.dtype in ('tabular', 'image'):
+            from ensemble_weights.models.knndws import KNNDWSModel
+            return KNNDWSModel(
+                metric=self.metric, mode=self.mode, neighbor_finder=finder
+            ), 'KNN-DWS'
+
+        if self.method == 'knora-u' and self.dtype in ('tabular', 'image'):
+            from ensemble_weights.models.knorau import KNORAUModel
+            return KNORAUModel(
                 metric=self.metric, mode=self.mode, neighbor_finder=finder,
-                threshold=self.threshold
-            ), 'KNN-DW'
+            ), 'KNORA-U'
+
+        if self.method == 'knora-e' and self.dtype in ('tabular', 'image'):
+            from ensemble_weights.models.knorae import KNORAEModel
+            return KNORAEModel(
+                metric=self.metric, mode=self.mode, neighbor_finder=finder,
+            ), 'KNORA-E'
 
         if self.method == 'ola' and self.dtype in ('tabular', 'image'):
             from ensemble_weights.models.ola import OLAModel
@@ -256,7 +269,7 @@ class DynamicRouter:
         preds_dict = {name: to_numpy(preds) for name, preds in preds_dict.items()}
         self.model.fit(features, y, preds_dict)
 
-    def predict(self, x, temperature):
+    def predict(self, x, temperature, threshold=0.5):
         """
         Return per-sample model weights for one or more test inputs.
 
@@ -279,4 +292,4 @@ class DynamicRouter:
             x = add_batch_dim(x)
             x = self.feature_extractor(x)[0]
         x = to_numpy(x)
-        return self.model.predict(x, temperature)
+        return self.model.predict(x, temperature, threshold)

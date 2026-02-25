@@ -2,12 +2,14 @@
 """
 Dynamic Ensemble Selection — Showcase (Regression)
 ===================================================
-Compares four strategies on two real regression datasets.
+Compares seven strategies on two real regression datasets:
 
-  Best Single      Best individual model on validation data, applied uniformly.
-  Global Ensemble  Single fixed weight vector learned via Nelder-Mead on val set.
-  DES knn-dw       Per-sample blending weighted by local MAE in K val neighbors.
-  DES OLA          Same neighborhood lookup; hard selection of the local best.
+  Best Single       best individual model on validation data, applied uniformly.
+  Global Ensemble   single fixed weight vector learned via Nelder‑Mead on val set.
+  DES knn‑dws       per‑sample blending (softmax) weighted by local MAE in K neighbours.
+  DES OLA           per‑sample hard selection of the single locally best model.
+  DES KNORA‑U       per‑sample voting: weight = fraction of neighbours on which a model is competent.
+  DES KNORA‑E       per‑sample: find largest neighbourhood where at least one model is competent on ALL neighbours.
 
 Datasets
   California Housing  20K samples, 8 features. Coastal/inland regime split.
@@ -18,11 +20,11 @@ Models
   Diverse inductive biases give DES meaningfully different experts to route between.
 
 Why regression?
-  MAE gives a continuous per-sample signal. Classification accuracy (0/1) is too
-  coarse for softmax weighting to differentiate models within a small neighborhood.
+  MAE gives a continuous per‑sample signal. Classification accuracy (0/1) is too
+  coarse for softmax weighting to differentiate models within a small neighbourhood.
 
 Install:  pip install scikit-learn scipy
-Runtime:  ~2-4 min on a MacBook Air M3
+Runtime:  ~3‑5 min on a MacBook Air M3
 """
 
 import warnings
@@ -44,21 +46,23 @@ from ensemble_weights import DynamicRouter
 warnings.filterwarnings('ignore')
 
 SEED      = 42
-K         = 20     # neighbors for DES
+K         = 20     # neighbours for DES
 THRESHOLD = 0.5    # competence gate: exclude models below 50% of best local score
-TEMP      = 0.1    # softmax temperature; lower = sharper routing
+TEMP      = 0.1    # softmax temperature; lower = sharper routing (used only by knn‑dws)
 
-W = 66
+W = 80
 
 
 def banner():
     print(f"\n{'━' * W}")
     print("  Dynamic Ensemble Selection — Showcase  (Regression)")
     print(f"{'━' * W}")
-    print("  Best Single       best val-set model applied everywhere")
-    print("  Global Ensemble   fixed weights, Nelder-Mead on val set")
-    print("  DES knn-dw        per-sample adaptive blending  ← this library")
-    print("  DES OLA           per-sample hard model selection  ← this library")
+    print("  Best Single       best val‑set model applied everywhere")
+    print("  Global Ensemble   fixed weights, Nelder‑Mead on val set")
+    print("  DES KNN-DWS       per‑sample adaptive blending  ← this library")
+    print("  DES OLA           per‑sample hard model selection  ← this library")
+    print("  DES KNORA‑U       per‑sample voting (union of competent models)  ← this library")
+    print("  DES KNORA‑E       per‑sample intersection (models correct on all neighbours)  ← this library")
     print("  Metric: MAE (lower is better)")
     print(f"{'━' * W}")
 
@@ -80,18 +84,18 @@ def show_results(rows, best_mae, y_mean):
     """
     Print results table with three columns:
       MAE        — raw error in target units
-      % of mean  — MAE as a fraction of the target mean; intuitive size-of-error gauge
+      % of mean  — MAE as a fraction of the target mean; intuitive size‑of‑error gauge
       vs Best    — % improvement (negative = better) relative to the best single model
     """
     best_overall = min(mae for _, mae in rows)
-    print(f"\n  {'Method':<36} {'MAE':>8}  {'% of mean':>10}  {'vs Best':>9}")
-    print(f"  {'-' * 36}  {'-' * 8}  {'-' * 10}  {'-' * 9}")
+    print(f"\n  {'Method':<44} {'MAE':>8}  {'% of mean':>10}  {'vs Best':>9}")
+    print(f"  {'-' * 44}  {'-' * 8}  {'-' * 10}  {'-' * 9}")
     for name, mae in rows:
         pct_mean = mae / y_mean * 100
         delta    = (mae - best_mae) / best_mae * 100
         d_str    = "    —    " if mae == best_mae else f"{'+' if delta >= 0 else ''}{delta:.2f}%"
         marker   = "  ◀" if mae == best_overall else ""
-        print(f"  {name:<36}  {mae:>8.4f}  {pct_mean:>9.2f}%  {d_str:>9}{marker}")
+        print(f"  {name:<44}  {mae:>8.4f}  {pct_mean:>9.2f}%  {d_str:>9}{marker}")
 
 
 # ── Data loading ──────────────────────────────────────────────────────
@@ -122,7 +126,7 @@ def build_models():
     Three regressors with orthogonal inductive biases.
 
     Linear Reg.      Globally linear; correct where the relationship is simple,
-                     systematically wrong in non-linear or interaction-driven regions.
+                     systematically wrong in non‑linear or interaction‑driven regions.
     KNN Regressor    Pure local averaging; excels in dense clusters, degrades in sparse areas.
     Hist. Boosting   Sequential boosting; best on hard samples other models miss.
     """
@@ -147,7 +151,7 @@ def build_models():
 
 def fit_global_ensemble(val_preds, y_val):
     """
-    Solve w* = argmin_w MAE(Σ w_i·ŷ_i, y) on the val set via Nelder-Mead.
+    Solve w* = argmin_w MAE(Σ w_i·ŷ_i, y) on the val set via Nelder‑Mead.
     One fixed weight vector applied to every test sample regardless of local structure.
     """
     names   = list(val_preds.keys())
@@ -172,10 +176,10 @@ def apply_global_weights(preds, weights):
 
 # ── DES prediction ────────────────────────────────────────────────────
 
-def des_predict(router, X_test, test_preds, temperature=1.0):
-    """Apply per-sample DES weights to scalar model predictions."""
+def des_predict(router, X_test, test_preds, temperature=1.0, threshold=0.5):
+    """Apply per‑sample DES weights to scalar model predictions."""
     names  = list(test_preds.keys())
-    result = router.predict(X_test, temperature=temperature)
+    result = router.predict(X_test, temperature=temperature, threshold=threshold)
     if isinstance(result, dict):
         result = [result]
     return np.array([
@@ -190,13 +194,13 @@ def run(loader):
     X, y, ds_name, n_features = loader()
     dataset_header(ds_name, len(X), n_features, float(y.mean()), float(y.std()))
 
-    # Strict three-way split: train 60% / val 20% / test 20%.
+    # Strict three‑way split: train 60% / val 20% / test 20%.
     # Ensembles fit on val only; test is never touched until final evaluation.
     X_tv, X_test, y_tv, y_test = train_test_split(X, y, test_size=0.20, random_state=SEED)
     X_tr, X_val, y_tr, y_val   = train_test_split(X_tv, y_tv, test_size=0.25, random_state=SEED)
     print(f"\n  Split → {len(X_tr):,} train / {len(X_val):,} val / {len(X_test):,} test")
 
-    section("Training models  (val-set MAE)")
+    section("Training models  (val‑set MAE)")
     models = build_models()
     val_preds, test_preds, val_maes = {}, {}, {}
 
@@ -214,60 +218,69 @@ def run(loader):
 
     t0 = time.time()
     ge_w = fit_global_ensemble(val_preds, y_val)
-    print(f"    ✓ Global Ensemble  (Nelder-Mead, {time.time()-t0:.1f}s)")
+    print(f"    ✓ Global Ensemble  (Nelder‑Mead, {time.time()-t0:.1f}s)")
     for n, w in ge_w.items():
         print(f"        {n:<22}  weight = {w:.3f}")
 
-    # Scaler fit on val only — test information must not influence neighborhood structure.
+    # Scaler fit on val only — test information must not influence neighbourhood structure.
     des_scaler = StandardScaler().fit(X_val)
     X_val_s    = des_scaler.transform(X_val)
     X_test_s   = des_scaler.transform(X_test)
 
-    router_knn = DynamicRouter(
-        task='regression', dtype='tabular', method='knn-dw',
-        metric='mae', mode='min', k=K, preset='balanced',
-        threshold=THRESHOLD,
-    )
-    t0 = time.perf_counter()
-    router_knn.fit(X_val_s, y_val, val_preds)
-    knn_fit_ms = (time.perf_counter() - t0) * 1000
-    print(f"    ✓ DES knn-dw  (k={K}, gate={THRESHOLD}, temp={TEMP})  fit: {knn_fit_ms:.2f}ms")
+    # Dictionary to store all DES routers and their predictions
+    des_routers = {}
+    des_methods = [
+        ('knn-dws',  'knn‑dws   (gate={}, T={})'.format(THRESHOLD, TEMP)),
+        ('ola',      'OLA'),
+        ('knora-u',  'KNORA‑U'),
+        ('knora-e',  'KNORA‑E'),
+    ]
 
-    router_ola = DynamicRouter(
-        task='regression', dtype='tabular', method='ola',
-        metric='mae', mode='min', k=K, preset='balanced',
-    )
-    t0 = time.perf_counter()
-    router_ola.fit(X_val_s, y_val, val_preds)
-    ola_fit_ms = (time.perf_counter() - t0) * 1000
-    print(f"    ✓ DES OLA     (k={K}, hard select)  fit: {ola_fit_ms:.2f}ms")
+    fit_times = {}
+    predict_times = {}
+    des_predictions = {}
 
-    section("Results on held-out test set  (MAE — lower is better)")
+    for method, display_name in des_methods:
+        router = DynamicRouter(
+            task='regression', dtype='tabular', method=method,
+            metric='mae', mode='min', k=K, preset='balanced'
+        )
+        t0 = time.perf_counter()
+        router.fit(X_val_s, y_val, val_preds)
+        fit_times[method] = (time.perf_counter() - t0) * 1000  # ms
+
+        t0 = time.perf_counter()
+        preds = des_predict(router, X_test_s, test_preds, temperature=TEMP, threshold=THRESHOLD)
+        predict_times[method] = (time.perf_counter() - t0) * 1000
+
+        des_predictions[method] = preds
+        des_routers[method] = router
+        print(f"    ✓ DES {display_name:<25}  fit: {fit_times[method]:6.2f}ms  |  predict: {predict_times[method]:6.2f}ms")
+
+    section("Results on held‑out test set  (MAE — lower is better)")
 
     best_mae = mean_absolute_error(y_test, test_preds[best_name])
     ge_mae   = mean_absolute_error(y_test, apply_global_weights(test_preds, ge_w))
-
-    t0 = time.perf_counter()
-    knn_predictions = des_predict(router_knn, X_test_s, test_preds, temperature=TEMP)
-    knn_predict_ms = (time.perf_counter() - t0) * 1000
-    des_knn_mae = mean_absolute_error(y_test, knn_predictions)
-
-    t0 = time.perf_counter()
-    ola_predictions = des_predict(router_ola, X_test_s, test_preds)
-    ola_predict_ms = (time.perf_counter() - t0) * 1000
-    des_ola_mae = mean_absolute_error(y_test, ola_predictions)
-
-    n_test = len(X_test_s)
-    print(f"\n  DES timing on {n_test:,} test samples:")
-    print(f"    knn-dw  fit {knn_fit_ms:7.2f}ms  |  predict {knn_predict_ms:7.2f}ms  ({knn_predict_ms/n_test:.4f}ms/sample)")
-    print(f"    OLA     fit {ola_fit_ms:7.2f}ms  |  predict {ola_predict_ms:7.2f}ms  ({ola_predict_ms/n_test:.4f}ms/sample)")
+    des_knn_mae  = mean_absolute_error(y_test, des_predictions['knn-dws'])
+    des_ola_mae  = mean_absolute_error(y_test, des_predictions['ola'])
+    des_knorau_mae = mean_absolute_error(y_test, des_predictions['knora-u'])
+    des_knorae_mae = mean_absolute_error(y_test, des_predictions['knora-e'])
 
     show_results([
-        (f"Best Single  ({best_name})",               best_mae),
-        ("Global Ensemble  (Nelder-Mead)",             ge_mae),
-        (f"DES knn-dw  (gate={THRESHOLD}, T={TEMP})",  des_knn_mae),
-        ("DES OLA  (hard select)",                     des_ola_mae),
+        (f"Best Single  ({best_name})",                      best_mae),
+        ("Global Ensemble  (Nelder‑Mead)",                    ge_mae),
+        (f"DES knn‑dws  (gate={THRESHOLD}, T={TEMP})",        des_knn_mae),
+        ("DES OLA",                                            des_ola_mae),
+        ("DES KNORA‑U",                                        des_knorau_mae),
+        ("DES KNORA‑E",                                        des_knorae_mae),
     ], best_mae, float(y_test.mean()))
+
+    n_test = len(X_test_s)
+    print(f"\n  DES timing summary on {n_test:,} test samples (ms):")
+    print(f"    {'Method':<12}  {'Fit (ms)':>8}  {'Predict (ms)':>12}  {'ms/sample':>10}")
+    print(f"    {'-'*12}  {'-'*8}  {'-'*12}  {'-'*10}")
+    for method, _ in des_methods:
+        print(f"    {method:<12}  {fit_times[method]:>8.2f}  {predict_times[method]:>12.2f}  {predict_times[method]/n_test:>10.4f}")
 
 
 if __name__ == '__main__':

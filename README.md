@@ -283,7 +283,7 @@ Or instantiate a finder directly:
 
 ```python
 from ensemble_weights.models.neighbors import FaissNeighborFinder
-from ensemble_weights.models.knn import KNNModel
+from ensemble_weights.models.knndws import KNNModel
 
 finder = FaissNeighborFinder(k=20, index_type='ivf', n_probes=50)
 model = KNNModel(metric=lambda y, p: abs(y - p), mode='min',

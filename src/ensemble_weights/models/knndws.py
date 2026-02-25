@@ -1,65 +1,28 @@
-from ensemble_weights.models.base import BaseRouter
+from ensemble_weights.models.knnbase import KNNBase
 import numpy as np
 
 
-class KNNModel(BaseRouter):
+class KNNDWSModel(KNNBase):
     """
-    KNN-DW: distance-weighted Dynamic Ensemble Selection.
+    KNN-DWS: K-Nearest Neighbors with Distance-Weighted Softmax selection.
 
     Retrieves the K nearest validation neighbors for each test point and
     weights models by their average local score. A competence gate excludes
     models below a threshold before softmax weighting.
     """
 
-    def __init__(self, metric, mode='max', neighbor_finder=None,
-                 threshold=0.5):
-        """
-        Parameters
-        ----------
-        metric : callable
-            Per-sample scoring function: (y_true, y_pred) -> float.
-        mode : str
-            'max' if higher scores are better, 'min' if lower.
-        neighbor_finder : NeighborFinder
-            Backend used for neighborhood queries.
-        threshold : float
-            After per-neighborhood normalization (best=1.0, worst=0.0), models
-            scoring below this fraction of the local best are excluded from the
-            blend. 0.0 disables the gate; 1.0 reduces to OLA behavior.
-        """
-        self.metric = metric
-        self.mode = mode
-        self.model = neighbor_finder
-        self.threshold = threshold
-        self.matrix = None
-        self.models = None
-        self.features = None
-
-    def _compute_scores(self, y, preds):
-        """Return a 1D array of per-sample metric scores."""
-        return np.vectorize(self.metric)(y, preds)
-
-    def fit(self, features, y, preds_dict):
-        self.features = features
-        self.models = list(preds_dict.keys())
-        n_val, n_models = len(y), len(self.models)
-        self.matrix = np.zeros((n_val, n_models))
-
-        for j, name in enumerate(self.models):
-            scores = self._compute_scores(y, preds_dict[name])
-            # Negate minimization metrics so the matrix is always higher-is-better.
-            self.matrix[:, j] = scores if self.mode == 'max' else -scores
-
-        self.model.fit(features)
-
-    def predict(self, x, temperature=1.0):
+    def predict(self, x, temperature=1.0, threshold=0.5):
         """
         Parameters
         ----------
         temperature : float
             Softmax sharpness. Lower values route more decisively to the local
-            best model; higher values produce softer blending. Default 0.1 for
-            regression metrics; 1.0 may suit classification.
+            best model; higher values produce softer blending. Recommended:
+            0.1 for regression metrics, 1.0 for classification.
+        threshold : float
+            After per-neighborhood normalization (best=1.0, worst=0.0), models
+            scoring below this fraction of the local best are excluded from the
+            blend. 0.0 disables the gate; 1.0 reduces to OLA behavior.
         """
         x = np.atleast_2d(x)
         batch_size = x.shape[0]
@@ -79,8 +42,8 @@ class KNNModel(BaseRouter):
 
         # Zero out models below the competence threshold before softmax.
         # Falls back to the single best if nothing passes (guard for edge cases).
-        if self.threshold > 0:
-            gate = norm_scores >= self.threshold
+        if threshold > 0:
+            gate = norm_scores >= threshold
             any_pass = gate.any(axis=1, keepdims=True)
             gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
@@ -89,7 +52,7 @@ class KNNModel(BaseRouter):
         # they cannot contribute through the denominator.
         max_scores = norm_scores.max(axis=1, keepdims=True)
         exp_scores = np.exp((norm_scores - max_scores) / temperature)
-        if self.threshold > 0:
+        if threshold > 0:
             exp_scores = exp_scores * gate
         weights = exp_scores / exp_scores.sum(axis=1, keepdims=True)
 
