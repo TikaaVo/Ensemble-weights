@@ -6,7 +6,6 @@ Supports knn-dw (soft per-sample weighting) and OLA (hard per-sample selection),
 with pluggable neighbor finders for exact and approximate search.
 """
 from ensemble_weights.utils import to_numpy, add_batch_dim
-import numpy as np
 
 # Built-in per-sample metrics. All take scalar (y_true, y_pred) and return float.
 # Pass any callable with the same signature to use a custom metric.
@@ -210,16 +209,16 @@ class DynamicRouter:
     def create_model(self):
         """Instantiate the neighbor finder and routing model from current config."""
         if self.finder == 'knn':
-            from ensemble_weights.neighbors import KNNNeighborFinder
+            from ensemble_weights.models.neighbors import KNNNeighborFinder
             finder = KNNNeighborFinder(**self.kwargs)
         elif self.finder == 'faiss':
-            from ensemble_weights.neighbors import FaissNeighborFinder
+            from ensemble_weights.models.neighbors import FaissNeighborFinder
             finder = FaissNeighborFinder(**self.kwargs)
         elif self.finder == 'annoy':
-            from ensemble_weights.neighbors import AnnoyNeighborFinder
+            from ensemble_weights.models.neighbors import AnnoyNeighborFinder
             finder = AnnoyNeighborFinder(**self.kwargs)
         elif self.finder == 'hnsw':
-            from ensemble_weights.neighbors import HNSWNeighborFinder
+            from ensemble_weights.models.neighbors import HNSWNeighborFinder
             finder = HNSWNeighborFinder(**self.kwargs)
         else:
             raise ValueError(f"Unknown finder: {self.finder}")

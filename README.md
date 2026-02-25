@@ -28,9 +28,11 @@ The `exact` preset requires only scikit-learn, which is always installed.
 ```python
 from ensemble_weights import DynamicRouter
 
-# 1. Train your models on X_train / y_train (any sklearn-compatible models)
+# 1. Train your models
 
-# 2. Get validation predictions from each model
+# 2. Get validation predictions from each model and organize them into a dictionary
+# This allows it to be compatible with any ML library, as long as you can organize
+# the validation predictions as follows:
 val_preds = {
     'linear':  linear_model.predict(X_val),
     'knn':     knn_model.predict(X_val),
@@ -280,12 +282,12 @@ router = DynamicRouter(
 Or instantiate a finder directly:
 
 ```python
-from ensemble_weights.neighbors import FaissNeighborFinder
+from ensemble_weights.models.neighbors import FaissNeighborFinder
 from ensemble_weights.models.knn import KNNModel
 
 finder = FaissNeighborFinder(k=20, index_type='ivf', n_probes=50)
-model  = KNNModel(metric=lambda y, p: abs(y - p), mode='min',
-                  neighbor_finder=finder, competence_threshold=0.5)
+model = KNNModel(metric=lambda y, p: abs(y - p), mode='min',
+                 neighbor_finder=finder, competence_threshold=0.5)
 model.fit(X_val, y_val, val_preds)
 ```
 
