@@ -1,385 +1,317 @@
-# Configuration Guide - Speed/Accuracy Tradeoffs
+# ensemble-weights
 
-## Overview
+A Python library for **Dynamic Ensemble Selection (DES)** — per-sample adaptive routing across a pool of pre-trained models, using a held-out validation set to determine which model (or blend of models) performs best in the local neighborhood of each test point.
 
-The DES (Dynamic Ensemble Selection) library now includes **preset configurations** that let your users easily choose between speed and accuracy tradeoffs without needing to understand the underlying ANN algorithms.
+Unlike fixed ensembles that apply the same weights everywhere, DES assigns different weights to different inputs based on where each model tends to be accurate. A linear model might dominate in low-variance regions while a boosting model wins on complex interactions — DES finds and exploits this automatically.
+
+---
+
+## Installation
+
+```bash
+pip install ensemble-weights
+```
+
+**Optional dependencies** (install only what you need):
+
+```bash
+pip install faiss-cpu   # for 'balanced', 'fast', and 'turbo' presets
+pip install hnswlib     # for 'high_dim_balanced' and 'high_dim_fast' presets
+```
+
+The `exact` preset requires only scikit-learn, which is always installed.
+
+---
 
 ## Quick Start
-
-### Option 1: Use a Preset (Recommended)
 
 ```python
 from ensemble_weights import DynamicRouter
 
-# Balanced preset - good default for most cases
+# 1. Train your models on X_train / y_train (any sklearn-compatible models)
+
+# 2. Get validation predictions from each model
+val_preds = {
+    'linear':  linear_model.predict(X_val),
+    'knn':     knn_model.predict(X_val),
+    'boosting': boost_model.predict(X_val),
+}
+
+# 3. Fit the router on the validation set
 router = DynamicRouter(
-    task='classification',
+    task='regression',
     dtype='tabular',
-    method='knn-dw',
-    metric='accuracy',
-    preset='balanced'  # Easy!
+    method='knn-dw',   # soft per-sample blending
+    metric='mae',
+    mode='min',
+    k=20,
+    preset='exact',
+)
+router.fit(X_val, y_val, val_preds)
+
+# 4. Get per-sample weights at inference time
+test_preds = {
+    'linear':  linear_model.predict(X_test),
+    'knn':     knn_model.predict(X_test),
+    'boosting': boost_model.predict(X_test),
+}
+
+weights = router.predict(X_test)  # list of {model_name: weight} dicts
+
+# 5. Blend predictions using the returned weights
+import numpy as np
+
+results = []
+for i, w in enumerate(weights):
+    blended = sum(w[name] * test_preds[name][i] for name in w)
+    results.append(blended)
+predictions = np.array(results)
+```
+
+---
+
+## How It Works
+
+At fit time, the router builds a neighbor index over the validation set features and records each model's per-sample score in a score matrix `(n_val, n_models)`.
+
+At predict time, for each test point:
+
+1. Retrieve its K nearest neighbors from the validation set.
+2. Average each model's scores across those K neighbors.
+3. Normalize scores within the neighborhood so the best model = 1.0, worst = 0.0.
+4. Apply a **competence gate** — zero out any model below a threshold of the local best.
+5. Run softmax with a temperature parameter to produce final blend weights.
+
+This means that in regions where one model clearly dominates, it receives most or all of the weight. In genuinely ambiguous regions, weights are spread more evenly.
+
+---
+
+## Methods
+
+### `knn-dw` — Distance-Weighted Blending
+
+Soft blending using per-neighborhood softmax weights. Recommended for most use cases. The competence gate and temperature parameter control how aggressively it routes toward the single best local model.
+
+### `ola` — Overall Local Accuracy
+
+Hard selection: always assigns weight 1.0 to the single model with the highest average score in the local neighborhood. Equivalent to `knn-dw` with `temperature → 0` and `competence_threshold=1.0`. Use when you want pure model selection with no blending.
+
+---
+
+## DynamicRouter API
+
+```python
+DynamicRouter(
+    task,                    # 'regression' or 'classification'
+    dtype,                   # 'tabular' or 'image'
+    method='knn-dw',         # 'knn-dw' or 'ola'
+    metric='accuracy',       # see Metrics section below
+    mode='max',              # 'max' if higher score = better, 'min' if lower
+    preset='balanced',       # see Presets section below
+    k=10,                    # number of neighbors per query
+    competence_threshold=0.5,# knn-dw only; see Tuning section below
+    feature_extractor=None,  # optional callable applied before neighbor search
+    finder=None,             # required only with preset='custom'
+    **kwargs,                # forwarded to the neighbor finder
 )
 ```
 
-### Option 2: Automatic Recommendation
+### `.fit(features, y, preds_dict)`
+
+Fits the routing model on validation data.
+
+| Parameter | Description |
+|---|---|
+| `features` | `(n_val, n_features)` — validation set features |
+| `y` | `(n_val,)` — validation ground-truth labels or values |
+| `preds_dict` | `dict[str, array]` — validation predictions keyed by model name |
+
+**Important:** `features` must be from a held-out validation set that was not used to train the base models. Using training data here will cause the router to overfit to in-sample performance.
+
+### `.predict(x, temperature=None)`
+
+Returns per-sample model weights.
+
+| Parameter | Description |
+|---|---|
+| `x` | `(n_features,)` or `(batch_size, n_features)` |
+| `temperature` | Softmax sharpness for `knn-dw`. `None` uses auto-default (0.1 for `mode='min'`, 1.0 for `mode='max'`) |
+
+**Returns:** A single `{model_name: weight}` dict for one sample, or a list of such dicts for a batch.
+
+---
+
+## Metrics
+
+Pass a string name or any callable with signature `(y_true, y_pred) -> float`.
+
+| Name | Formula | Use with `mode` |
+|---|---|---|
+| `'accuracy'` | `1 if y_true == y_pred else 0` | `'max'` |
+| `'mae'` | `abs(y_true - y_pred)` | `'min'` |
+| `'mse'` | `(y_true - y_pred) ** 2` | `'min'` |
+| `'rmse'` | `sqrt((y_true - y_pred) ** 2)` | `'min'` |
+| Custom | Any `(y_true, y_pred) -> float` | depends |
+
+---
+
+## Presets
+
+Presets configure the neighbor search backend. Higher-numbered presets are faster but may require additional dependencies.
+
+| Preset | Backend | Notes |
+|---|---|---|
+| `'exact'` | sklearn KNN | 100% accurate, no extra dependencies. Best for small datasets or low-dimensional data. |
+| `'balanced'` | FAISS IVF | ~98% recall. Good default for medium datasets (10K–100K val samples). Requires `faiss-cpu`. |
+| `'fast'` | FAISS IVF | ~95% recall. Faster queries than `'balanced'`, slightly lower recall. Requires `faiss-cpu`. |
+| `'turbo'` | FAISS flat | Exact results with C++/SIMD speed. Best for large datasets when accuracy matters. Requires `faiss-cpu`. |
+| `'high_dim_balanced'` | HNSW (hnswlib) | Best for >100D feature spaces, balanced. Requires `hnswlib`. |
+| `'high_dim_fast'` | HNSW (hnswlib) | Best for >100D feature spaces, faster. Requires `hnswlib`. |
+| `'custom'` | Your choice | Specify `finder='knn'/'faiss'/'annoy'/'hnsw'` and pass finder kwargs directly. |
+
+> **Note on Annoy:** `AnnoyNeighborFinder` is available via `preset='custom', finder='annoy'` but has a known bug on Apple Silicon (M1/M2/M3) where it returns only 1 neighbor regardless of settings. Use FAISS presets on macOS ARM64.
+
+### Auto-selection
 
 ```python
-# Let the library choose based on your data
 router = DynamicRouter.from_data_size(
-    n_samples=100000,  # Your training data size
-    n_features=50,     # Number of features
-    task='classification',
+    n_samples=50_000,   # validation set size
+    n_features=15,
+    n_queries=1_000,    # optional: expected test set size; influences fit/predict tradeoff
+    task='regression',
     dtype='tabular',
-    method='knn-dw',
-    metric='accuracy'
 )
 ```
 
-### Option 3: Custom Fine-Tuning
+`from_data_size` selects a preset based on dataset dimensions and optionally the expected query volume — ANN methods have higher fit cost but lower per-query cost, so if `n_queries` is small relative to `n_samples`, exact search may be faster overall.
 
 ```python
-# Full control for advanced users
+DynamicRouter.list_presets()  # print all presets with descriptions
+```
+
+---
+
+## Tuning
+
+### `competence_threshold` (knn-dw only)
+
+After per-neighborhood normalization, any model scoring below this fraction of the local best is excluded from the softmax blend entirely.
+
+| Value | Behavior |
+|---|---|
+| `0.0` | No gate — all models always contribute |
+| `0.5` | Only models within 50% of the local best contribute (default) |
+| `1.0` | Equivalent to OLA — only the single best model contributes |
+
+A value of `0.5` works well in practice. Lower values allow more blending; higher values produce harder routing.
+
+### `temperature`
+
+Controls softmax sharpness in `knn-dw`. Passed to `.predict()`, not the constructor.
+
+| Value | Behavior |
+|---|---|
+| `0.1` | Near-hard routing; soft only when models are genuinely tied. **Recommended for regression.** |
+| `1.0` | Moderate blending. **Recommended for classification.** |
+| `> 1.0` | Increasingly uniform weights regardless of local performance |
+
+When `temperature=None` (default), it is set automatically based on `mode`: `0.1` for `'min'` metrics (regression), `1.0` for `'max'` metrics (classification).
+
+### `k`
+
+Number of validation neighbors per query. More neighbors = smoother, more stable local estimates, but less sensitivity to sharp regional boundaries. `k=20` is a reasonable default; consider `k=10–15` for smaller validation sets (<2K samples).
+
+---
+
+## Feature Scaling
+
+The neighbor search operates in raw feature space. If your features have different scales, standardize them before passing to the router — otherwise high-magnitude features will dominate distance calculations and neighborhoods will be meaningless.
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+# Fit scaler on validation set only — not train or test
+scaler = StandardScaler().fit(X_val)
+X_val_scaled  = scaler.transform(X_val)
+X_test_scaled = scaler.transform(X_test)
+
+router.fit(X_val_scaled, y_val, val_preds)
+weights = router.predict(X_test_scaled)
+```
+
+This does not apply to the base models themselves, only to the features passed to the router.
+
+---
+
+## When DES Works Well
+
+DES provides the most benefit when:
+
+- **Models have orthogonal failure modes** — e.g. a linear model dominates in smooth regions while KNN dominates in dense clusters. If all models fail on the same samples, there is nothing to route between.
+- **The validation set is large enough** — local estimates from K neighbors are noisy. At least ~1,000 val samples is recommended; very small val sets (< 300) produce unreliable local scores.
+- **Input space has regional structure** — distinct regimes where different models genuinely perform differently (geographic clusters, temporal patterns, distinct subpopulations).
+
+DES will match or slightly underperform a fixed global ensemble when one model dominates everywhere, or when val set size is too small to estimate local performance reliably.
+
+---
+
+## Custom Neighbor Finders
+
+Use `preset='custom'` to configure a finder directly:
+
+```python
+# Custom FAISS IVF with specific parameters
 router = DynamicRouter(
-    task='classification',
-    dtype='tabular',
-    method='knn-dw',
-    metric='accuracy',
-    preset='custom',
-    finder='faiss',
-    index_type='ivf',
-    n_probes=15,  # Tune this: higher = more accurate, slower
-    k=10
+    task='regression', dtype='tabular', method='knn-dw',
+    metric='mae', mode='min', k=20,
+    preset='custom', finder='faiss',
+    index_type='ivf', n_cells=64, n_probes=20,
 )
-```
 
-## Available Presets
-
-### 📊 Preset Comparison Table
-
-| Preset | Finder | Speed | Recall | Memory | Best For |
-|--------|--------|-------|--------|--------|----------|
-| **exact** | sklearn KNN | 1x (baseline) | 100% | Low | <10K samples, critical accuracy |
-| **balanced** | FAISS IVF | 5-10x | ~98% | Medium | 10K-500K samples, production |
-| **fast** | FAISS IVF | 10-20x | ~95% | Medium | 100K-1M samples, high throughput |
-| **turbo** | Annoy | 20-50x | ~90% | Medium | >1M samples, maximum speed |
-| **high_dim_balanced** | HNSW | 5-15x | ~97% | High | >100D features, balanced |
-| **high_dim_fast** | HNSW | 10-25x | ~95% | Medium | >100D features, speed priority |
-
-### 🎯 Detailed Preset Descriptions
-
-#### `exact` - Perfect Accuracy
-- **Algorithm**: Sklearn KNN (exact search)
-- **Speed**: Baseline (1x)
-- **Recall**: 100% (finds true nearest neighbors)
-- **Memory**: Low
-- **Use when**:
-  - Dataset < 10,000 samples
-  - Accuracy is absolutely critical
-  - Prototyping and development
-  - You need to benchmark other methods
-
-#### `balanced` - Best Default ⭐
-- **Algorithm**: FAISS IVF with 20 probes
-- **Speed**: 5-10x faster than exact
-- **Recall**: ~98% (finds 98% of true neighbors)
-- **Memory**: 1.5x baseline
-- **Use when**:
-  - Dataset 10K-500K samples
-  - Production deployments
-  - You want "set it and forget it"
-  - Good accuracy is important but speed matters
-
-#### `fast` - High Throughput
-- **Algorithm**: FAISS IVF with 10 probes
-- **Speed**: 10-20x faster than exact
-- **Recall**: ~95%
-- **Memory**: 1.5x baseline
-- **Use when**:
-  - Dataset 100K-1M samples
-  - Real-time inference required
-  - Throughput > 1000 QPS needed
-  - 95% accuracy is acceptable
-
-#### `turbo` - Maximum Speed
-- **Algorithm**: Annoy with 50-100 trees
-- **Speed**: 20-50x faster than exact
-- **Recall**: ~90%
-- **Memory**: 2x baseline
-- **Use when**:
-  - Dataset > 1M samples
-  - Maximum speed is critical
-  - Batch processing at scale
-  - 90% accuracy is acceptable
-
-#### `high_dim_balanced` - For Embeddings
-- **Algorithm**: HNSW (hnswlib) with M=32
-- **Speed**: 5-15x faster than exact
-- **Recall**: ~97%
-- **Memory**: 2.5x baseline
-- **Use when**:
-  - Features > 100 dimensions
-  - Image embeddings (ResNet, CLIP, etc.)
-  - Text embeddings (BERT, GPT, etc.)
-  - Balanced performance needed
-
-#### `high_dim_fast` - Fast Embeddings
-- **Algorithm**: HNSW (hnswlib) with M=16
-- **Speed**: 10-25x faster than exact
-- **Recall**: ~95%
-- **Memory**: 2x baseline
-- **Use when**:
-  - Features > 100 dimensions
-  - Speed is more important than accuracy
-  - Resource-constrained environments
-  - Serving embeddings at scale
-
-## Decision Tree
-
-Use this flowchart to choose the right preset:
-
-```
-START
-  │
-  ├─ Dataset < 10K samples? ──YES──> Use 'exact'
-  │   NO │
-  │      │
-  ├─ Features < 20 dimensions? ──YES──> Use 'exact' (ANN doesn't help)
-  │   NO │
-  │      │
-  ├─ Features > 100 dimensions?
-  │   YES │
-  │      ├─ Need max speed? ──YES──> Use 'high_dim_fast'
-  │      └─ NO ──> Use 'high_dim_balanced'
-  │   NO │
-  │      │
-  ├─ Dataset > 1M samples? ──YES──> Use 'turbo'
-  │   NO │
-  │      │
-  ├─ Dataset > 100K samples?
-  │   YES │
-  │      ├─ Need max speed? ──YES──> Use 'fast'
-  │      └─ NO ──> Use 'balanced'
-  │   NO │
-  │      └──> Use 'balanced'
-```
-
-## Understanding Recall
-
-**Recall** is the percentage of true nearest neighbors that are found by the approximate method.
-
-### What does recall mean for ensemble performance?
-
-- **100% recall** (exact): Perfect weights, best ensemble performance
-- **98% recall**: Very close to optimal, 2% of neighbors differ
-- **95% recall**: Good weights, slight degradation
-- **90% recall**: Acceptable weights, noticeable but small degradation
-
-### Example Impact:
-
-If you use `k=10` neighbors:
-- 98% recall: ~9.8 out of 10 neighbors are correct
-- 95% recall: ~9.5 out of 10 neighbors are correct
-- 90% recall: ~9.0 out of 10 neighbors are correct
-
-Since weights are averaged over neighbors, the impact on final ensemble accuracy is usually **much smaller** than the recall difference.
-
-## Performance Examples
-
-### Example 1: Medium Dataset (50K samples, 50 features)
-
-```python
-# Test different presets
-configs = ['exact', 'balanced', 'fast', 'turbo']
-
-Results:
-├─ exact:    100ms/query, 100% recall
-├─ balanced:  12ms/query,  98% recall  ← RECOMMENDED
-├─ fast:       6ms/query,  95% recall
-└─ turbo:      3ms/query,  91% recall
-```
-
-**Recommendation**: Use `balanced` - 8x faster with minimal accuracy loss.
-
-### Example 2: Large Dataset (500K samples, 200 features)
-
-```python
-Results:
-├─ exact:           1000ms/query, 100% recall
-├─ balanced:          80ms/query,  98% recall
-├─ high_dim_balanced: 50ms/query,  97% recall  ← RECOMMENDED
-└─ high_dim_fast:     30ms/query,  95% recall
-```
-
-**Recommendation**: Use `high_dim_balanced` - 20x faster, great for high-dim data.
-
-### Example 3: Very Large Dataset (2M samples, 50 features)
-
-```python
-Results:
-├─ exact:   5000ms/query, 100% recall (too slow!)
-├─ balanced: 200ms/query,  98% recall
-├─ fast:     100ms/query,  95% recall
-└─ turbo:     50ms/query,  90% recall  ← RECOMMENDED
-```
-
-**Recommendation**: Use `turbo` - 100x faster, acceptable accuracy.
-
-## Advanced: Fine-Tuning Parameters
-
-If you need more control, you can customize any preset:
-
-### FAISS IVF Tuning
-
-```python
+# Custom HNSW with nmslib backend
 router = DynamicRouter(
-    preset='custom',
-    finder='faiss',
-    index_type='ivf',
-    n_probes=15,     # Higher = more accurate, slower (default: 10)
-    n_cells=None,    # Auto-computed as sqrt(n_samples)
-    k=10
+    task='regression', dtype='tabular', method='knn-dw',
+    metric='mae', mode='min', k=20,
+    preset='custom', finder='hnsw',
+    backend='nmslib', M=32, ef_construction=400, ef_search=200,
 )
 ```
 
-**`n_probes` tuning guide**:
-- `n_probes=1`: Fastest, ~80% recall
-- `n_probes=5`: Fast, ~90% recall
-- `n_probes=10`: Balanced, ~95% recall
-- `n_probes=20`: Accurate, ~98% recall
-- `n_probes=50`: Very accurate, ~99% recall
-
-### Annoy Tuning
+Or instantiate a finder directly:
 
 ```python
+from ensemble_weights.neighbors import FaissNeighborFinder
+from ensemble_weights.models.knn import KNNModel
+
+finder = FaissNeighborFinder(k=20, index_type='ivf', n_probes=50)
+model  = KNNModel(metric=lambda y, p: abs(y - p), mode='min',
+                  neighbor_finder=finder, competence_threshold=0.5)
+model.fit(X_val, y_val, val_preds)
+```
+
+---
+
+## Image Tasks
+
+For image inputs, pass a `feature_extractor` to map raw images to a meaningful embedding space before neighbor search:
+
+```python
+import torchvision.models as models
+import torch
+
+resnet = models.resnet50(pretrained=True)
+extractor = lambda x: resnet(torch.tensor(x)).detach().numpy()
+
 router = DynamicRouter(
-    preset='custom',
-    finder='annoy',
-    n_trees=100,     # More trees = more accurate, larger index
-    search_k=-1,     # -1 = auto (n_trees * k * 10)
-    k=10
+    task='classification', dtype='image', method='knn-dw',
+    metric='accuracy', mode='max', k=10,
+    preset='high_dim_balanced',
+    feature_extractor=extractor,
 )
 ```
 
-**`n_trees` tuning guide**:
-- `n_trees=10`: Fast to build, ~80% recall
-- `n_trees=50`: Balanced, ~90% recall
-- `n_trees=100`: Good, ~93% recall
-- `n_trees=200`: Best, ~95% recall
+---
 
-### HNSW Tuning
+## License
 
-```python
-router = DynamicRouter(
-    preset='custom',
-    finder='hnsw',
-    backend='hnswlib',
-    M=32,                # Higher = more accurate, more memory
-    ef_construction=200, # Higher = better index, slower to build
-    ef_search=100,       # Higher = more accurate queries, slower
-    k=10
-)
-```
-
-**`ef_search` tuning guide** (most common to adjust):
-- `ef_search=50`: Fast, ~93% recall
-- `ef_search=100`: Balanced, ~96% recall
-- `ef_search=200`: Accurate, ~98% recall
-- `ef_search=500`: Very accurate, ~99% recall
-
-## API Reference
-
-### DynamicRouter Methods
-
-#### `__init__(..., preset='balanced')`
-Initialize router with a preset configuration.
-
-**Parameters**:
-- `preset` (str): One of 'exact', 'balanced', 'fast', 'turbo', 'high_dim_balanced', 'high_dim_fast', 'custom'
-- Other parameters: same as original implementation
-
-#### `DynamicRouter.from_data_size(n_samples, n_features, ...)`
-Automatically choose the best preset based on data characteristics.
-
-**Parameters**:
-- `n_samples` (int): Number of training samples
-- `n_features` (int): Number of features/dimensions
-- Other parameters: same as original implementation
-
-**Returns**: Configured DynamicRouter instance
-
-#### `DynamicRouter.list_presets()`
-Print all available presets with descriptions.
-
-```python
-DynamicRouter.list_presets()
-```
-
-#### `router.get_config_info()`
-Get current configuration details.
-
-```python
-config = router.get_config_info()
-# Returns: {'preset': 'balanced', 'finder': 'faiss', 'method': 'knn-dw', 'parameters': {...}}
-```
-
-## Testing Your Configuration
-
-Use the comparison script to benchmark different presets on your actual data:
-
-```bash
-python preset_comparison.py
-```
-
-This will:
-1. Test all available presets
-2. Show speed and accuracy tradeoffs
-3. Recommend the best configuration for your data
-
-## Common Questions
-
-### Q: Which preset should I start with?
-**A**: Start with `'balanced'` - it's a great default for most cases.
-
-### Q: My queries are too slow, what should I do?
-**A**: 
-1. Try `'fast'` preset
-2. If still slow, try `'turbo'`
-3. Consider if your data is high-dimensional (>100D), use `'high_dim_fast'`
-
-### Q: My ensemble accuracy dropped, what should I do?
-**A**:
-1. Check if you're using the right preset for your data size
-2. Try `'balanced'` instead of `'fast'`
-3. For critical applications, use `'exact'`
-
-### Q: How do I know if high-dimensional presets will help?
-**A**: If your features are image embeddings, text embeddings, or any representation with >100 dimensions, high-dimensional presets will likely help.
-
-### Q: Can I use custom parameters with a preset?
-**A**: Yes! Use `preset='custom'` and specify all parameters manually.
-
-### Q: How much memory will each preset use?
-**A**:
-- `exact`, `balanced`, `fast`: ~1-1.5x your feature matrix size
-- `turbo`: ~2x your feature matrix size
-- `high_dim_*`: ~2-2.5x your feature matrix size
-
-### Q: Do I need to install additional libraries?
-**A**:
-- `exact`, `balanced`, `fast`: Just `scikit-learn` and `faiss-cpu`
-- `turbo`: Requires `annoy` (`pip install annoy`)
-- `high_dim_*`: Requires `hnswlib` or `nmslib`
-
-## Summary
-
-✅ **For most users**: Use `preset='balanced'` or `DynamicRouter.from_data_size()`
-
-✅ **Need speed**: Use `'fast'` or `'turbo'`
-
-✅ **High dimensions**: Use `'high_dim_balanced'` or `'high_dim_fast'`
-
-✅ **Critical accuracy**: Use `'exact'`
-
-✅ **Advanced users**: Use `preset='custom'` and tune parameters
-
-The preset system makes it easy to get great performance without needing to understand ANN algorithms!
+MIT
