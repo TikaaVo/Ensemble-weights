@@ -223,29 +223,44 @@ def run(loader):
     X_val_s    = des_scaler.transform(X_val)
     X_test_s   = des_scaler.transform(X_test)
 
-    t0 = time.time()
     router_knn = DynamicRouter(
         task='regression', dtype='tabular', method='knn-dw',
-        metric='mae', mode='min', k=K, preset='exact',
+        metric='mae', mode='min', k=K, preset='turbo', n_trees=500, search_k=5000,
         competence_threshold=THRESHOLD,
     )
+    t0 = time.perf_counter()
     router_knn.fit(X_val_s, y_val, val_preds)
-    print(f"    ✓ DES knn-dw  (k={K}, gate={THRESHOLD}, temp={TEMP}, {time.time()-t0:.1f}s)")
+    knn_fit_ms = (time.perf_counter() - t0) * 1000
+    print(f"    ✓ DES knn-dw  (k={K}, gate={THRESHOLD}, temp={TEMP})  fit: {knn_fit_ms:.2f}ms")
 
-    t0 = time.time()
     router_ola = DynamicRouter(
         task='regression', dtype='tabular', method='ola',
-        metric='mae', mode='min', k=K, preset='exact',
+        metric='mae', mode='min', k=K, preset='turbo',
     )
+    t0 = time.perf_counter()
     router_ola.fit(X_val_s, y_val, val_preds)
-    print(f"    ✓ DES OLA     (k={K}, hard select, {time.time()-t0:.1f}s)")
+    ola_fit_ms = (time.perf_counter() - t0) * 1000
+    print(f"    ✓ DES OLA     (k={K}, hard select)  fit: {ola_fit_ms:.2f}ms")
 
     section("Results on held-out test set  (MAE — lower is better)")
 
-    best_mae    = mean_absolute_error(y_test, test_preds[best_name])
-    ge_mae      = mean_absolute_error(y_test, apply_global_weights(test_preds, ge_w))
-    des_knn_mae = mean_absolute_error(y_test, des_predict(router_knn, X_test_s, test_preds, temperature=TEMP))
-    des_ola_mae = mean_absolute_error(y_test, des_predict(router_ola, X_test_s, test_preds))
+    best_mae = mean_absolute_error(y_test, test_preds[best_name])
+    ge_mae   = mean_absolute_error(y_test, apply_global_weights(test_preds, ge_w))
+
+    t0 = time.perf_counter()
+    knn_predictions = des_predict(router_knn, X_test_s, test_preds, temperature=TEMP)
+    knn_predict_ms = (time.perf_counter() - t0) * 1000
+    des_knn_mae = mean_absolute_error(y_test, knn_predictions)
+
+    t0 = time.perf_counter()
+    ola_predictions = des_predict(router_ola, X_test_s, test_preds)
+    ola_predict_ms = (time.perf_counter() - t0) * 1000
+    des_ola_mae = mean_absolute_error(y_test, ola_predictions)
+
+    n_test = len(X_test_s)
+    print(f"\n  DES timing on {n_test:,} test samples:")
+    print(f"    knn-dw  fit {knn_fit_ms:7.2f}ms  |  predict {knn_predict_ms:7.2f}ms  ({knn_predict_ms/n_test:.4f}ms/sample)")
+    print(f"    OLA     fit {ola_fit_ms:7.2f}ms  |  predict {ola_predict_ms:7.2f}ms  ({ola_predict_ms/n_test:.4f}ms/sample)")
 
     show_results([
         (f"Best Single  ({best_name})",               best_mae),

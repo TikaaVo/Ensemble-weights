@@ -130,12 +130,23 @@ class DynamicRouter:
     @classmethod
     def from_data_size(cls, n_samples, n_features, task, dtype, method='knn-dw',
                        metric='accuracy', mode='max', k=10, competence_threshold=0.5,
-                       **extra_kwargs):
+                       n_queries=None, **extra_kwargs):
         """
         Recommend and instantiate a preset based on dataset dimensions.
 
         Uses exact search for small or low-dimensional data, HNSW for high-
         dimensional spaces, and FAISS/Annoy for large flat datasets.
+
+        ANN methods have higher fit cost but lower predict cost than exact KNN.
+        If n_queries is provided, the recommendation accounts for this tradeoff:
+        if the query volume is too low to recoup the ANN fit overhead, exact
+        search is preferred even for larger datasets.
+
+        Parameters
+        ----------
+        n_queries : int, optional
+            Expected number of prediction calls (i.e. test set size). If None,
+            the recommendation is based on n_samples alone.
         """
         if n_samples < 10000:
             preset, reason = 'exact', "Small dataset (<10K) — exact search is fast enough"
@@ -151,8 +162,21 @@ class DynamicRouter:
         else:
             preset, reason = 'fast', "Large dataset (100K–1M) — fast with good accuracy"
 
+        # ANN fit cost grows with n_samples; predict cost savings only materialise
+        # over many queries. If n_queries is small relative to n_samples, the fit
+        # overhead never pays off and exact search is faster overall.
+        # Empirical crossover: ANN is worthwhile when n_queries > n_samples * 0.05.
+        if n_queries is not None and preset != 'exact':
+            if n_queries < n_samples * 0.05:
+                preset = 'exact'
+                reason = (
+                    f"Low query volume ({n_queries:,} queries vs {n_samples:,} val samples) "
+                    f"— ANN fit overhead not recouped; exact search is faster overall"
+                )
+
         print(f"Auto-selected preset: '{preset}'\nReason: {reason}")
-        print(f"Data: {n_samples:,} samples, {n_features} features")
+        print(f"Data: {n_samples:,} samples, {n_features} features"
+              + (f", {n_queries:,} queries" if n_queries is not None else ""))
 
         return cls(
             task=task, dtype=dtype, method=method, metric=metric, mode=mode,
