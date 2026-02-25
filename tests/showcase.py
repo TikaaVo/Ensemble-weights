@@ -45,10 +45,35 @@ from ensemble_weights import DynamicRouter
 
 warnings.filterwarnings('ignore')
 
-SEED      = 42
-K         = 20     # neighbours for DES
-THRESHOLD = 0.5    # competence gate: exclude models below 50% of best local score
-TEMP      = 0.1    # softmax temperature; lower = sharper routing (used only by knn‑dws)
+SEED = 42
+K    = 20    # neighbours for DES
+TEMP = 0.1   # softmax temperature for knn-dws; lower = sharper routing
+
+# Threshold interpretation differs by algorithm:
+#   knn-dws  — gates averaged neighbourhood scores; 0.5 = exclude bottom half of range
+#   ola      — ignored (argmax needs no threshold)
+#   knora-u  — per-neighbour binary competence; 1.0 = only the strictly best model
+#              votes on each neighbour, matching the original classification definition
+#   knora-e  — same per-neighbour criterion as knora-u; 1.0 is the correct analogue
+#
+# Why 1.0 for KNORA in regression?
+#   KNORA was designed for 0/1 classification accuracy, where "competent" means
+#   "correct" and normalization yields 1.0 for correct models, 0.0 for wrong ones.
+#   With continuous regression error, per-neighbour normalization still produces
+#   exactly 1.0 for the best model and 0.0 for the worst, but intermediate models
+#   land somewhere in between based purely on relative rank within the range.
+#   threshold=0.5 then lets "second-best" models earn votes even when they are
+#   substantially worse, which corrupts the ensemble on datasets where one model
+#   dominates (e.g. Bike Sharing: Linear MAE=105 vs Boosting MAE=42).
+#   threshold=1.0 recovers the binary "oracle" criterion: only the strictly best
+#   model on each neighbour votes, which is the correct regression analogue of
+#   "correct classification."
+THRESHOLDS = {
+    'knn-dws':  0.5,
+    'ola':      0.5,   # ignored by OLA
+    'knora-u':  1.0,
+    'knora-e':  1.0,
+}
 
 W = 80
 
@@ -57,13 +82,17 @@ def banner():
     print(f"\n{'━' * W}")
     print("  Dynamic Ensemble Selection — Showcase  (Regression)")
     print(f"{'━' * W}")
-    print("  Best Single       best val‑set model applied everywhere")
-    print("  Global Ensemble   fixed weights, Nelder‑Mead on val set")
-    print("  DES KNN-DWS       per‑sample adaptive blending  ← this library")
-    print("  DES OLA           per‑sample hard model selection  ← this library")
-    print("  DES KNORA‑U       per‑sample voting (union of competent models)  ← this library")
-    print("  DES KNORA‑E       per‑sample intersection (models correct on all neighbours)  ← this library")
+    print("  Best Single       best val-set model applied everywhere")
+    print("  Global Ensemble   fixed weights, Nelder-Mead on val set")
+    print("  DES knn-dws       per-sample adaptive blending  ← this library")
+    print("  DES OLA           per-sample hard model selection  ← this library")
+    print("  DES KNORA-U       per-sample voting (union of competent models)  ← this library")
+    print("  DES KNORA-E       per-sample intersection (models correct on all neighbours)  ← this library")
     print("  Metric: MAE (lower is better)")
+    print(f"{'━' * W}")
+    print("  Note: KNORA-U/E use threshold=1.0 (only strictly-best model per neighbour")
+    print("  earns a vote). This matches the original binary 'oracle' criterion. See")
+    print("  THRESHOLDS in source for a full explanation of why 0.5 harms regression.")
     print(f"{'━' * W}")
 
 
@@ -228,12 +257,11 @@ def run(loader):
     X_test_s   = des_scaler.transform(X_test)
 
     # Dictionary to store all DES routers and their predictions
-    des_routers = {}
     des_methods = [
-        ('knn-dws',  'knn‑dws   (gate={}, T={})'.format(THRESHOLD, TEMP)),
-        ('ola',      'OLA'),
-        ('knora-u',  'KNORA‑U'),
-        ('knora-e',  'KNORA‑E'),
+        ('knn-dws',  f'knn-dws  (gate={THRESHOLDS["knn-dws"]}, T={TEMP})'),
+        ('ola',       'OLA'),
+        ('knora-u',  f'KNORA-U  (threshold={THRESHOLDS["knora-u"]})'),
+        ('knora-e',  f'KNORA-E  (threshold={THRESHOLDS["knora-e"]})'),
     ]
 
     fit_times = {}
@@ -241,38 +269,36 @@ def run(loader):
     des_predictions = {}
 
     for method, display_name in des_methods:
-        router = DynamicRouter(
-            task='regression', dtype='tabular', method=method,
-            metric='mae', mode='min', k=K, preset='balanced'
-        )
+        import io, contextlib
+        with contextlib.redirect_stdout(io.StringIO()):
+            router = DynamicRouter(
+                task='regression', dtype='tabular', method=method,
+                metric='mae', mode='min', k=K, preset='balanced',
+            )
         t0 = time.perf_counter()
         router.fit(X_val_s, y_val, val_preds)
-        fit_times[method] = (time.perf_counter() - t0) * 1000  # ms
+        fit_times[method] = (time.perf_counter() - t0) * 1000
 
+        threshold = THRESHOLDS[method]
         t0 = time.perf_counter()
-        preds = des_predict(router, X_test_s, test_preds, temperature=TEMP, threshold=THRESHOLD)
+        preds = des_predict(router, X_test_s, test_preds, temperature=TEMP, threshold=threshold)
         predict_times[method] = (time.perf_counter() - t0) * 1000
 
         des_predictions[method] = preds
-        des_routers[method] = router
-        print(f"    ✓ DES {display_name:<25}  fit: {fit_times[method]:6.2f}ms  |  predict: {predict_times[method]:6.2f}ms")
+        print(f"    ✓ DES {display_name:<32}  fit: {fit_times[method]:6.2f}ms  |  predict: {predict_times[method]:6.2f}ms")
 
     section("Results on held‑out test set  (MAE — lower is better)")
 
     best_mae = mean_absolute_error(y_test, test_preds[best_name])
     ge_mae   = mean_absolute_error(y_test, apply_global_weights(test_preds, ge_w))
-    des_knn_mae  = mean_absolute_error(y_test, des_predictions['knn-dws'])
-    des_ola_mae  = mean_absolute_error(y_test, des_predictions['ola'])
-    des_knorau_mae = mean_absolute_error(y_test, des_predictions['knora-u'])
-    des_knorae_mae = mean_absolute_error(y_test, des_predictions['knora-e'])
 
     show_results([
-        (f"Best Single  ({best_name})",                      best_mae),
-        ("Global Ensemble  (Nelder‑Mead)",                    ge_mae),
-        (f"DES knn‑dws  (gate={THRESHOLD}, T={TEMP})",        des_knn_mae),
-        ("DES OLA",                                            des_ola_mae),
-        ("DES KNORA‑U",                                        des_knorau_mae),
-        ("DES KNORA‑E",                                        des_knorae_mae),
+        (f"Best Single  ({best_name})",                                      best_mae),
+        ("Global Ensemble  (Nelder-Mead)",                                    ge_mae),
+        (f"DES knn-dws  (gate={THRESHOLDS['knn-dws']}, T={TEMP})",           mean_absolute_error(y_test, des_predictions['knn-dws'])),
+        ("DES OLA",                                                            mean_absolute_error(y_test, des_predictions['ola'])),
+        (f"DES KNORA-U  (threshold={THRESHOLDS['knora-u']})",                 mean_absolute_error(y_test, des_predictions['knora-u'])),
+        (f"DES KNORA-E  (threshold={THRESHOLDS['knora-e']})",                 mean_absolute_error(y_test, des_predictions['knora-e'])),
     ], best_mae, float(y_test.mean()))
 
     n_test = len(X_test_s)
