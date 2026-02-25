@@ -6,15 +6,27 @@ Supports knn-dws (soft per-sample weighting), knora-u (vote-based selection),
 and OLA (hard per-sample selection),
 with pluggable neighbor finders for exact and approximate search.
 """
+import math
 from ensemble_weights.utils import to_numpy, add_batch_dim
 
 # Built-in per-sample metrics. All take scalar (y_true, y_pred) and return float.
 # Pass any callable with the same signature to use a custom metric.
+#
+# Scalar metrics — y_pred is a single number:
+#   accuracy, mae, mse, rmse
+#
+# Probability metrics — y_pred is a 1D array of class probabilities.
+# Pass predict_proba() output in preds_dict when using these.
+# KNNBase._compute_scores detects 2D input and dispatches row-by-row automatically.
+#   log_loss      -log(p[y_true])          mode='min'   continuous per-sample NLL
+#   prob_correct  p[y_true]                mode='max'   probability on the correct class
 metrics = {
-    'accuracy': lambda y_true, y_pred: 1 if y_true == y_pred else 0,
-    'mse':      lambda y_true, y_pred: (y_true - y_pred) ** 2,
-    'mae':      lambda y_true, y_pred: abs(y_true - y_pred),
-    'rmse':     lambda y_true, y_pred: ((y_true - y_pred) ** 2) ** 0.5,
+    'accuracy':     lambda y_true, y_pred: 1 if y_true == y_pred else 0,
+    'mse':          lambda y_true, y_pred: (y_true - y_pred) ** 2,
+    'mae':          lambda y_true, y_pred: abs(y_true - y_pred),
+    'rmse':         lambda y_true, y_pred: ((y_true - y_pred) ** 2) ** 0.5,
+    'log_loss':     lambda y_true, y_pred: -math.log(max(float(y_pred[int(y_true)]), 1e-15)),
+    'prob_correct': lambda y_true, y_pred: float(y_pred[int(y_true)]),
 }
 
 SPEED_PRESETS = {

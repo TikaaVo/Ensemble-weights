@@ -36,7 +36,18 @@ class KNNBase(BaseRouter):
         self.features = None
 
     def _compute_scores(self, y, preds):
-        """Return a 1D array of per-sample metric scores."""
+        """
+        Return a 1D array of per-sample metric scores.
+
+        preds may be 1D (scalar predictions) or 2D (probability arrays, one
+        row per sample). np.vectorize cannot handle the 2D case correctly —
+        it iterates element-wise rather than row-wise — so we dispatch based
+        on shape. The metric signature is always (y_true_scalar, y_pred) → float;
+        for probability inputs y_pred is a 1D array of class probabilities.
+        """
+        preds = np.asarray(preds)
+        if preds.ndim == 2:
+            return np.array([self.metric(y[i], preds[i]) for i in range(len(y))])
         return np.vectorize(self.metric)(y, preds)
 
     def fit(self, features, y, preds_dict):
