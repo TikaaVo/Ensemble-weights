@@ -206,6 +206,20 @@ class AnnoyNeighborFinder(NeighborFinder):
         for i, vec in enumerate(X):
             self.index_.add_item(i, vec.tolist())
         self.index_.build(self.n_trees)
+
+        # Sanity check: verify the index returns the expected number of neighbors.
+        # Annoy silently returns 1 result on Apple Silicon (M1/M2/M3) due to a
+        # known ARM64 compilation bug, regardless of n_trees or search_k.
+        test_vec = X[0].tolist()
+        test_result = self.index_.get_nns_by_vector(test_vec, self.k, search_k=self.search_k)
+        if len(test_result) < self.k:
+            raise RuntimeError(
+                f"Annoy index returned {len(test_result)} neighbors but {self.k} were "
+                f"requested. This is a known Annoy bug on Apple Silicon (M1/M2/M3) — "
+                f"the package does not work correctly on ARM64. "
+                f"Use preset='fast' (FAISS IVF) or preset='exact' (sklearn KNN) instead."
+            )
+
         return self
 
     def kneighbors(self, X, k=None):

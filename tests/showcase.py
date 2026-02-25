@@ -225,7 +225,7 @@ def run(loader):
 
     router_knn = DynamicRouter(
         task='regression', dtype='tabular', method='knn-dw',
-        metric='mae', mode='min', k=K, preset='turbo', n_trees=500, search_k=5000,
+        metric='mae', mode='min', k=K, preset='balanced',
         competence_threshold=THRESHOLD,
     )
     t0 = time.perf_counter()
@@ -235,7 +235,7 @@ def run(loader):
 
     router_ola = DynamicRouter(
         task='regression', dtype='tabular', method='ola',
-        metric='mae', mode='min', k=K, preset='turbo',
+        metric='mae', mode='min', k=K, preset='balanced',
     )
     t0 = time.perf_counter()
     router_ola.fit(X_val_s, y_val, val_preds)

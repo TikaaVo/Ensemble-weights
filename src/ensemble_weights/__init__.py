@@ -34,9 +34,9 @@ SPEED_PRESETS = {
         'kwargs': {'index_type': 'ivf', 'n_probes': 30}
     },
     'turbo': {
-        'description': 'Maximum speed, decent accuracy (~90% recall)',
-        'finder': 'annoy',
-        'kwargs': {'n_trees': 100, 'search_k': -1}
+        'description': 'Maximum speed, exact results — FAISS flat index',
+        'finder': 'faiss',
+        'kwargs': {'index_type': 'flat'}
     },
     'high_dim_balanced': {
         'description': 'High-dimensional data (>100D), balanced',
