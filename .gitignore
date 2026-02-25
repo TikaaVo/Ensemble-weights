@@ -215,3 +215,5 @@ __marimo__/
 .DS_Store
 .AppleDouble
 .LSOverride
+
+tests/catboost_info/
