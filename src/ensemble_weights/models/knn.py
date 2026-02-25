@@ -12,7 +12,7 @@ class KNNModel(BaseRouter):
     """
 
     def __init__(self, metric, mode='max', neighbor_finder=None,
-                 competence_threshold=0.5):
+                 threshold=0.5):
         """
         Parameters
         ----------
@@ -22,7 +22,7 @@ class KNNModel(BaseRouter):
             'max' if higher scores are better, 'min' if lower.
         neighbor_finder : NeighborFinder
             Backend used for neighborhood queries.
-        competence_threshold : float
+        threshold : float
             After per-neighborhood normalization (best=1.0, worst=0.0), models
             scoring below this fraction of the local best are excluded from the
             blend. 0.0 disables the gate; 1.0 reduces to OLA behavior.
@@ -30,7 +30,7 @@ class KNNModel(BaseRouter):
         self.metric = metric
         self.mode = mode
         self.model = neighbor_finder
-        self.competence_threshold = competence_threshold
+        self.threshold = threshold
         self.matrix = None
         self.models = None
         self.features = None
@@ -79,8 +79,8 @@ class KNNModel(BaseRouter):
 
         # Zero out models below the competence threshold before softmax.
         # Falls back to the single best if nothing passes (guard for edge cases).
-        if self.competence_threshold > 0:
-            gate = norm_scores >= self.competence_threshold
+        if self.threshold > 0:
+            gate = norm_scores >= self.threshold
             any_pass = gate.any(axis=1, keepdims=True)
             gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
@@ -89,7 +89,7 @@ class KNNModel(BaseRouter):
         # they cannot contribute through the denominator.
         max_scores = norm_scores.max(axis=1, keepdims=True)
         exp_scores = np.exp((norm_scores - max_scores) / temperature)
-        if self.competence_threshold > 0:
+        if self.threshold > 0:
             exp_scores = exp_scores * gate
         weights = exp_scores / exp_scores.sum(axis=1, keepdims=True)
 

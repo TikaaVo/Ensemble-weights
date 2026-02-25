@@ -84,7 +84,7 @@ class DynamicRouter:
         Required when preset='custom'. One of: 'knn', 'faiss', 'annoy', 'hnsw'.
     k : int
         Number of neighbors per query.
-    competence_threshold : float
+    threshold : float
         knn-dw only. Models scoring below this fraction of the local best
         (after per-neighborhood normalization) are excluded from softmax.
         0.0 disables; 1.0 is equivalent to OLA. Default: 0.5.
@@ -94,11 +94,11 @@ class DynamicRouter:
 
     def __init__(self, task, dtype, method='knn', metric='accuracy', mode='max',
                  feature_extractor=None, preset='balanced', finder=None, k=10,
-                 competence_threshold=0.5, **kwargs):
+                 threshold=0.5, **kwargs):
         self.task = task.lower()
         self.dtype = dtype.lower()
         self.method = method.lower()
-        self.competence_threshold = competence_threshold
+        self.threshold = threshold
 
         if isinstance(metric, str):
             if metric in metrics:
@@ -128,7 +128,7 @@ class DynamicRouter:
 
     @classmethod
     def from_data_size(cls, n_samples, n_features, task, dtype, method='knn-dw',
-                       metric='accuracy', mode='max', k=10, competence_threshold=0.5,
+                       metric='accuracy', mode='max', k=10, threshold=0.5,
                        n_queries=None, **extra_kwargs):
         """
         Recommend and instantiate a preset based on dataset dimensions.
@@ -179,7 +179,7 @@ class DynamicRouter:
 
         return cls(
             task=task, dtype=dtype, method=method, metric=metric, mode=mode,
-            preset=preset, k=k, competence_threshold=competence_threshold,
+            preset=preset, k=k, threshold=threshold,
             **extra_kwargs
         )
 
@@ -203,7 +203,7 @@ class DynamicRouter:
             'finder': self.finder,
             'method': self.method,
             'parameters': self.kwargs,
-            'competence_threshold': self.competence_threshold,
+            'threshold': self.threshold,
         }
 
     def create_model(self):
@@ -227,7 +227,7 @@ class DynamicRouter:
             from ensemble_weights.models.knn import KNNModel
             return KNNModel(
                 metric=self.metric, mode=self.mode, neighbor_finder=finder,
-                competence_threshold=self.competence_threshold
+                threshold=self.threshold
             ), 'KNN-DW'
 
         if self.method == 'ola' and self.dtype in ('tabular', 'image'):

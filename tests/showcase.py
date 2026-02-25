@@ -226,7 +226,7 @@ def run(loader):
     router_knn = DynamicRouter(
         task='regression', dtype='tabular', method='knn-dw',
         metric='mae', mode='min', k=K, preset='balanced',
-        competence_threshold=THRESHOLD,
+        threshold=THRESHOLD,
     )
     t0 = time.perf_counter()
     router_knn.fit(X_val_s, y_val, val_preds)

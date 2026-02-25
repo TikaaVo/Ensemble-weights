@@ -111,7 +111,7 @@ DynamicRouter(
     mode='max',              # 'max' if higher score = better, 'min' if lower
     preset='balanced',       # see Presets section below
     k=10,                    # number of neighbors per query
-    competence_threshold=0.5,# knn-dw only; see Tuning section below
+    threshold=0.5,           # knn-dw only; see Tuning section below
     feature_extractor=None,  # optional callable applied before neighbor search
     finder=None,             # required only with preset='custom'
     **kwargs,                # forwarded to the neighbor finder
@@ -195,7 +195,7 @@ DynamicRouter.list_presets()  # print all presets with descriptions
 
 ## Tuning
 
-### `competence_threshold` (knn-dw only)
+### `threshold` (knn-dw only)
 
 After per-neighborhood normalization, any model scoring below this fraction of the local best is excluded from the softmax blend entirely.
 
@@ -287,7 +287,7 @@ from ensemble_weights.models.knn import KNNModel
 
 finder = FaissNeighborFinder(k=20, index_type='ivf', n_probes=50)
 model = KNNModel(metric=lambda y, p: abs(y - p), mode='min',
-                 neighbor_finder=finder, competence_threshold=0.5)
+                 neighbor_finder=finder, threshold=0.5)
 model.fit(X_val, y_val, val_preds)
 ```
 
