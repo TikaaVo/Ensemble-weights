@@ -233,7 +233,7 @@ class DynamicRouter:
         preds_dict = {name: to_numpy(preds) for name, preds in preds_dict.items()}
         self.model.fit(features, y, preds_dict)
 
-    def predict(self, x, temperature=1.0):
+    def predict(self, x, temperature):
         """
         Return per-sample model weights for one or more test inputs.
 
@@ -250,6 +250,8 @@ class DynamicRouter:
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
         """
+        if temperature is None:
+            temperature = 0.1 if self.mode == 'min' else 1.0
         if self.feature_extractor is not None:
             x = add_batch_dim(x)
             x = self.feature_extractor(x)[0]

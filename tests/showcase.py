@@ -63,10 +63,11 @@ def banner():
     print(f"{'━' * W}")
 
 
-def dataset_header(name, n_samples, n_features, y_std):
+def dataset_header(name, n_samples, n_features, y_mean, y_std):
     print(f"\n\n{'━' * W}")
     print(f"  Dataset: {name}")
-    print(f"  {n_samples:,} samples  ·  {n_features} features  ·  target std = {y_std:.2f}")
+    print(f"  {n_samples:,} samples  ·  {n_features} features  ·  "
+          f"target mean = {y_mean:.2f}  std = {y_std:.2f}")
     print(f"{'━' * W}")
 
 
@@ -75,16 +76,22 @@ def section(title):
     print(f"  {'-' * (W - 4)}")
 
 
-def show_results(rows, best_mae):
-    """Print results table; marks overall winner and delta vs best single model."""
+def show_results(rows, best_mae, y_mean):
+    """
+    Print results table with three columns:
+      MAE        — raw error in target units
+      % of mean  — MAE as a fraction of the target mean; intuitive size-of-error gauge
+      vs Best    — % improvement (negative = better) relative to the best single model
+    """
     best_overall = min(mae for _, mae in rows)
-    print(f"\n  {'Method':<36} {'Test MAE':>10}  {'vs Best':>9}")
-    print(f"  {'-' * 36}  {'-' * 10}  {'-' * 9}")
+    print(f"\n  {'Method':<36} {'MAE':>8}  {'% of mean':>10}  {'vs Best':>9}")
+    print(f"  {'-' * 36}  {'-' * 8}  {'-' * 10}  {'-' * 9}")
     for name, mae in rows:
-        delta  = mae - best_mae
-        d_str  = "    —      " if delta == 0 else f" {'+' if delta >= 0 else ''}{delta:.4f}"
-        marker = "  ◀" if mae == best_overall else ""
-        print(f"  {name:<36}  {mae:>10.4f}  {d_str:>9}{marker}")
+        pct_mean = mae / y_mean * 100
+        delta    = (mae - best_mae) / best_mae * 100
+        d_str    = "    —    " if mae == best_mae else f"{'+' if delta >= 0 else ''}{delta:.2f}%"
+        marker   = "  ◀" if mae == best_overall else ""
+        print(f"  {name:<36}  {mae:>8.4f}  {pct_mean:>9.2f}%  {d_str:>9}{marker}")
 
 
 # ── Data loading ──────────────────────────────────────────────────────
@@ -181,7 +188,7 @@ def des_predict(router, X_test, test_preds, temperature=1.0):
 
 def run(loader):
     X, y, ds_name, n_features = loader()
-    dataset_header(ds_name, len(X), n_features, float(y.std()))
+    dataset_header(ds_name, len(X), n_features, float(y.mean()), float(y.std()))
 
     # Strict three-way split: train 60% / val 20% / test 20%.
     # Ensembles fit on val only; test is never touched until final evaluation.
@@ -245,7 +252,7 @@ def run(loader):
         ("Global Ensemble  (Nelder-Mead)",             ge_mae),
         (f"DES knn-dw  (gate={THRESHOLD}, T={TEMP})",  des_knn_mae),
         ("DES OLA  (hard select)",                     des_ola_mae),
-    ], best_mae)
+    ], best_mae, float(y_test.mean()))
 
 
 if __name__ == '__main__':
