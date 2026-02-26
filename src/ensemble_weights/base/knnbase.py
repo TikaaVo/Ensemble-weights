@@ -1,4 +1,4 @@
-from ensemble_weights.models.base import BaseRouter
+from ensemble_weights.base.base import BaseRouter
 import numpy as np
 
 
@@ -7,14 +7,12 @@ class KNNBase(BaseRouter):
     Shared base for KNN-based DES algorithms.
 
     Handles score matrix construction and neighbor index fitting.
-    Subclasses implement predict() with their own selection or weighting logic,
-    and may override fit() to add algorithm-specific post-processing
-    (e.g. OLA normalizes globally after the base fit).
+    Subclasses implement predict() with their own selection or weighting logic.
 
-    The difference between most DES algorithms (KNORA-E, KNORA-U, OLA, KNN-DWS,
-    META-DES, etc.) is purely in how they use the score matrix at predict time,
-    or in additional fit-time bookkeeping. The core loop — compute per-sample
-    scores, store in matrix, fit neighbor index — is always the same.
+    The difference between DES algorithms (KNORA-E, KNORA-U, OLA, KNN-DWS, etc.)
+    is purely in how they use the score matrix at predict time. The core loop —
+    compute per-sample scores, store in matrix, fit neighbor index — is always
+    the same and lives here.
     """
 
     def __init__(self, metric, mode='max', neighbor_finder=None):
@@ -28,12 +26,11 @@ class KNNBase(BaseRouter):
         neighbor_finder : NeighborFinder
             Backend used for neighborhood queries.
         """
-        self.metric = metric
-        self.mode = mode
-        self.model = neighbor_finder
-        self.matrix = None   # (n_val, n_models) score matrix; higher is always better
-        self.models = None   # ordered list of model names
-        self.features = None
+        self.metric          = metric
+        self.mode            = mode
+        self.model           = neighbor_finder
+        self.matrix          = None   # (n_val, n_models); higher is always better
+        self.models          = None   # ordered list of model names
 
     def _compute_scores(self, y, preds):
         """
@@ -41,9 +38,7 @@ class KNNBase(BaseRouter):
 
         preds may be 1D (scalar predictions) or 2D (probability arrays, one
         row per sample). np.vectorize cannot handle the 2D case correctly —
-        it iterates element-wise rather than row-wise — so we dispatch based
-        on shape. The metric signature is always (y_true_scalar, y_pred) → float;
-        for probability inputs y_pred is a 1D array of class probabilities.
+        it iterates element-wise rather than row-wise — so we dispatch on shape.
         """
         preds = np.asarray(preds)
         if preds.ndim == 2:
@@ -56,10 +51,13 @@ class KNNBase(BaseRouter):
 
         Scores are negated for minimization metrics so the matrix is always
         higher-is-better, regardless of the underlying metric direction.
+
+        This method expects pre-validated numpy arrays. Call prep_fit_inputs()
+        before calling this in any subclass fit().
         """
-        self.features = features
         self.models = list(preds_dict.keys())
-        n_val, n_models = len(y), len(self.models)
+        n_val       = len(y)
+        n_models    = len(self.models)
         self.matrix = np.zeros((n_val, n_models))
 
         for j, name in enumerate(self.models):

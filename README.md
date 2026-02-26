@@ -1,319 +1,390 @@
-# ensemble-weights
+# ensemble_weights
 
-A Python library for **Dynamic Ensemble Selection (DES)** — per-sample adaptive routing across a pool of pre-trained models, using a held-out validation set to determine which model (or blend of models) performs best in the local neighborhood of each test point.
+**Dynamic Ensemble Selection (DES) for tabular data.**
 
-Unlike fixed ensembles that apply the same weights everywhere, DES assigns different weights to different inputs based on where each model tends to be accurate. A linear model might dominate in low-variance regions while a boosting model wins on complex interactions — DES finds and exploits this automatically.
-
----
+DES improves on static model ensembles by routing each test sample to the models that are locally most competent — determined by their performance on the nearest validation samples in feature space. When models have distinct regional strengths (one excels on coastal data, another on inland; one on linear boundaries, another near decision boundaries) DES consistently outperforms any single model and often outperforms fixed-weight ensembles.
 
 ## Installation
 
 ```bash
-pip install ensemble-weights
+pip install scikit-learn scipy faiss-cpu
 ```
 
-**Optional dependencies** (install only what you need):
+For high-dimensional data (>100 features), also install `hnswlib`:
 
 ```bash
-pip install faiss-cpu   # for 'balanced', 'fast', and 'turbo' presets
-pip install hnswlib     # for 'high_dim_balanced' and 'high_dim_fast' presets
+pip install hnswlib
 ```
 
-The `exact` preset requires only scikit-learn, which is always installed.
+## Quickstart
+
+```python
+from ensemble_weights.des.knndws import KNNDWS
+
+# 1. Train your models on training data however you like
+model_a.fit(X_train, y_train)
+model_b.fit(X_train, y_train)
+
+# 2. Fit the router on a held-out validation set
+router = KNNDWS(task='regression', metric='mae', mode='min', k=20)
+router.fit(
+    X_val,
+    y_val,
+    {
+        'model_a': model_a.predict(X_val),
+        'model_b': model_b.predict(X_val),
+    }
+)
+
+# 3. Get per-sample weights at test time
+weights = router.predict(X_test)
+# [{'model_a': 0.73, 'model_b': 0.27}, {'model_a': 0.11, 'model_b': 0.89}, ...]
+
+# 4. Apply weights to test predictions
+test_preds_a = model_a.predict(X_test)
+test_preds_b = model_b.predict(X_test)
+final = [
+    sum(w[name] * preds[i] for name, preds in {'model_a': test_preds_a, 'model_b': test_preds_b}.items())
+    for i, w in enumerate(weights)
+]
+```
+
+## Core concept
+
+The library does not train models. It routes between them. You bring pre-trained models, generate their predictions on a held-out **validation set**, and pass those predictions to `fit()`. At inference time, `predict()` returns a weight dictionary `{model_name: weight}` for each test sample, which you apply to your own test predictions however suits your task.
+
+**Critical requirement:** `features[i]`, `y[i]`, and every `preds_dict[name][i]` must all refer to the same validation sample. The library validates lengths but cannot detect silent row-ordering mismatches — make sure all arrays come from the same split and in the same order.
 
 ---
 
-## Quick Start
+## Algorithms
+
+Import algorithm classes directly from their modules. All four share the same `fit()` interface; `predict()` accepts `temperature` and `threshold` on every class (irrelevant parameters are silently ignored).
+
+### KNNDWS — K-Nearest Neighbors with Distance-Weighted Softmax
 
 ```python
-from ensemble_weights import DynamicRouter
+from ensemble_weights.des.knndws import KNNDWS
+```
 
-# 1. Train your models
+The recommended default. Retrieves the K nearest validation neighbors for each test point, averages each model's local scores, normalizes to [0, 1] within the neighborhood, applies a competence gate, then weights models via softmax.
 
-# 2. Get validation predictions from each model and organize them into a dictionary
-# This allows it to be compatible with any ML library, as long as you can organize
-# the validation predictions as follows:
-val_preds = {
-    'linear':  linear_model.predict(X_val),
-    'knn':     knn_model.predict(X_val),
-    'boosting': boost_model.predict(X_val),
-}
+The only algorithm here that never makes hard binary decisions — every step is soft and continuous. When one model clearly dominates, the softmax concentrates weight on it; when models are similar, weights spread out. This makes it robust to noisy neighbor lookups and degrades gracefully when local signal is weak.
 
-# 3. Fit the router on the validation set
-router = DynamicRouter(
+```python
+router = KNNDWS(
+    task='regression',   # or 'classification'
+    metric='mae',        # see Metrics section
+    mode='min',          # 'min' if lower scores are better, 'max' if higher
+    k=20,                # neighborhood size
+    threshold=0.5,       # competence gate: exclude models below this fraction of local best
+    temperature=0.1,     # softmax sharpness; lower = sharper routing
+    preset='balanced',   # neighbor search backend (see Presets)
+)
+```
+
+**Temperature guidance:** `0.1` for regression (MAE differences between models are large); `1.0` for classification (log_loss differences are more moderate).
+
+**Threshold guidance:** `0.5` works well in most cases. After per-neighborhood normalization, models below 50% of the local range are excluded before softmax.
+
+---
+
+### OLA — Overall Local Accuracy
+
+```python
+from ensemble_weights.des.ola import OLA
+```
+
+Hard selection: assigns full weight to the single model with the highest average score across the K nearest neighbors. No blending. Useful as a strong baseline — if OLA and KNNDWS produce similar results, the pool lacks meaningful local diversity.
+
+```python
+router = OLA(
     task='regression',
-    dtype='tabular',
-    method='knn-dw',   # soft per-sample blending
     metric='mae',
     mode='min',
     k=20,
-    preset='exact',
+    preset='balanced',
 )
-router.fit(X_val, y_val, val_preds)
-
-# 4. Get per-sample weights at inference time
-test_preds = {
-    'linear':  linear_model.predict(X_test),
-    'knn':     knn_model.predict(X_test),
-    'boosting': boost_model.predict(X_test),
-}
-
-weights = router.predict(X_test)  # list of {model_name: weight} dicts
-
-# 5. Blend predictions using the returned weights
-import numpy as np
-
-results = []
-for i, w in enumerate(weights):
-    blended = sum(w[name] * test_preds[name][i] for name in w)
-    results.append(blended)
-predictions = np.array(results)
 ```
 
 ---
 
-## How It Works
-
-At fit time, the router builds a neighbor index over the validation set features and records each model's per-sample score in a score matrix `(n_val, n_models)`.
-
-At predict time, for each test point:
-
-1. Retrieve its K nearest neighbors from the validation set.
-2. Average each model's scores across those K neighbors.
-3. Normalize scores within the neighborhood so the best model = 1.0, worst = 0.0.
-4. Apply a **competence gate** — zero out any model below a threshold of the local best.
-5. Run softmax with a temperature parameter to produce final blend weights.
-
-This means that in regions where one model clearly dominates, it receives most or all of the weight. In genuinely ambiguous regions, weights are spread more evenly.
-
----
-
-## Methods
-
-### `knn-dw` — Distance-Weighted Blending
-
-Soft blending using per-neighborhood softmax weights. Recommended for most use cases. The competence gate and temperature parameter control how aggressively it routes toward the single best local model.
-
-### `ola` — Overall Local Accuracy
-
-Hard selection: always assigns weight 1.0 to the single model with the highest average score in the local neighborhood. Equivalent to `knn-dw` with `temperature → 0` and `competence_threshold=1.0`. Use when you want pure model selection with no blending.
-
----
-
-## DynamicRouter API
+### KNORAU — K-Nearest Oracles (Union)
 
 ```python
-DynamicRouter(
-    task,                    # 'regression' or 'classification'
-    dtype,                   # 'tabular' or 'image'
-    method='knn-dw',         # 'knn-dw' or 'ola'
-    metric='accuracy',       # see Metrics section below
-    mode='max',              # 'max' if higher score = better, 'min' if lower
-    preset='balanced',       # see Presets section below
-    k=10,                    # number of neighbors per query
-    threshold=0.5,           # knn-dw only; see Tuning section below
-    feature_extractor=None,  # optional callable applied before neighbor search
-    finder=None,             # required only with preset='custom'
-    **kwargs,                # forwarded to the neighbor finder
+from ensemble_weights.des.knorau import KNORAU
+```
+
+Counts how many of the K nearest neighbors each model is competent on. Weight is proportional to vote count (linear, not softmax). Models with zero votes are excluded.
+
+Works best for **classification with probability metrics** (`log_loss`, `prob_correct`), where per-neighbor normalization creates a continuous competence scale. For regression, use `threshold=1.0` to recover the binary oracle criterion — at lower values, per-neighbor normalization can inflate the apparent competence of weaker models.
+
+```python
+router = KNORAU(
+    task='classification',
+    metric='log_loss',
+    mode='min',
+    k=20,
+    threshold=0.5,   # use 1.0 for regression
+    preset='balanced',
 )
 ```
 
-### `.fit(features, y, preds_dict)`
+---
 
-Fits the routing model on validation data.
+### KNORAE — K-Nearest Oracles (Eliminate)
 
-| Parameter | Description |
-|---|---|
-| `features` | `(n_val, n_features)` — validation set features |
-| `y` | `(n_val,)` — validation ground-truth labels or values |
-| `preds_dict` | `dict[str, array]` — validation predictions keyed by model name |
+```python
+from ensemble_weights.des.knorae import KNORAE
+```
 
-**Important:** `features` must be from a held-out validation set that was not used to train the base models. Using training data here will cause the router to overfit to in-sample performance.
+Finds the largest neighborhood in which at least one model is competent on **every** neighbor (the intersection). If no model passes at K, shrinks to K-1 and retries — down to K=1, which always resolves. Surviving models share equal weight.
 
-### `.predict(x, temperature=None)`
+More aggressive than KNORAU. Tends to concentrate all weight on a single model. Performs well when one model genuinely dominates a tight local region; underperforms in noisy settings or when no model has clear regional dominance.
 
-Returns per-sample model weights.
-
-| Parameter | Description |
-|---|---|
-| `x` | `(n_features,)` or `(batch_size, n_features)` |
-| `temperature` | Softmax sharpness for `knn-dw`. `None` uses auto-default (0.1 for `mode='min'`, 1.0 for `mode='max'`) |
-
-**Returns:** A single `{model_name: weight}` dict for one sample, or a list of such dicts for a batch.
+```python
+router = KNORAE(
+    task='classification',
+    metric='log_loss',
+    mode='min',
+    k=20,
+    threshold=0.5,   # use 1.0 for regression
+    preset='balanced',
+)
+```
 
 ---
 
 ## Metrics
 
-Pass a string name or any callable with signature `(y_true, y_pred) -> float`.
+Pass a metric name as a string, or import the function directly.
 
-| Name | Formula | Use with `mode` |
+```python
+# String (resolved automatically)
+router = KNNDWS(task='regression', metric='mae', mode='min')
+
+# Function (import directly)
+from ensemble_weights.metrics import mae
+router = KNNDWS(task='regression', metric=mae, mode='min')
+
+# Custom callable
+router = KNNDWS(task='regression', metric=lambda y_true, y_pred: abs(y_true - y_pred) ** 0.5, mode='min')
+```
+
+### Scalar metrics — pass `predict()` output
+
+| Name | Formula | `mode` |
 |---|---|---|
-| `'accuracy'` | `1 if y_true == y_pred else 0` | `'max'` |
-| `'mae'` | `abs(y_true - y_pred)` | `'min'` |
-| `'mse'` | `(y_true - y_pred) ** 2` | `'min'` |
-| `'rmse'` | `sqrt((y_true - y_pred) ** 2)` | `'min'` |
-| Custom | Any `(y_true, y_pred) -> float` | depends |
+| `mae` | `abs(y_true - y_pred)` | `'min'` |
+| `mse` | `(y_true - y_pred) ** 2` | `'min'` |
+| `rmse` | `sqrt((y_true - y_pred) ** 2)` | `'min'` |
+| `accuracy` | `1.0 if correct else 0.0` | `'max'` |
+
+### Probability metrics — pass `predict_proba()` output
+
+| Name | Formula | `mode` | Notes |
+|---|---|---|---|
+| `log_loss` | `-log(p[y_true])` | `'min'` | Recommended for classification DES. Continuous signal — a model assigning 0.9 to the correct class scores much better than one assigning 0.51. |
+| `prob_correct` | `p[y_true]` | `'max'` | Simpler alternative; linear rather than log-scaled. |
+
+For probability metrics, pass 2D arrays of shape `(n_samples, n_classes)` in `preds_dict`. The library validates that the array dimensionality matches the metric at `fit()` time.
+
+**Why `log_loss` for classification?** Without continuous per-sample signal, KNORAU and KNORAE collapse toward near-random behavior in settings where one model dominates. `log_loss` provides the gradient they need.
+
+---
+
+## Classification example
+
+```python
+from ensemble_weights.des.knndws import KNNDWS
+
+# Models must support predict_proba
+lr.fit(X_train, y_train)
+knn.fit(X_train, y_train)
+hgb.fit(X_train, y_train)
+
+router = KNNDWS(task='classification', metric='log_loss', mode='min', k=20)
+router.fit(
+    X_val,
+    y_val,
+    {
+        'lr':  lr.predict_proba(X_val),    # shape (n_val, n_classes)
+        'knn': knn.predict_proba(X_val),
+        'hgb': hgb.predict_proba(X_val),
+    }
+)
+
+# Blend probability arrays, then argmax for hard predictions
+weights = router.predict(X_test)
+test_probas = {
+    'lr':  lr.predict_proba(X_test),
+    'knn': knn.predict_proba(X_test),
+    'hgb': hgb.predict_proba(X_test),
+}
+
+import numpy as np
+blended = np.array([
+    sum(w[name] * test_probas[name][i] for name in w)
+    for i, w in enumerate(weights)
+])
+predictions = blended.argmax(axis=1)
+```
 
 ---
 
 ## Presets
 
-Presets configure the neighbor search backend. Higher-numbered presets are faster but may require additional dependencies.
+Presets configure the neighbor search backend. The right choice depends on validation set size and dimensionality.
 
-| Preset | Backend | Notes |
+| Preset | Backend | Use when |
 |---|---|---|
-| `'exact'` | sklearn KNN | 100% accurate, no extra dependencies. Best for small datasets or low-dimensional data. |
-| `'balanced'` | FAISS IVF | ~98% recall. Good default for medium datasets (10K–100K val samples). Requires `faiss-cpu`. |
-| `'fast'` | FAISS IVF | ~95% recall. Faster queries than `'balanced'`, slightly lower recall. Requires `faiss-cpu`. |
-| `'turbo'` | FAISS flat | Exact results with C++/SIMD speed. Best for large datasets when accuracy matters. Requires `faiss-cpu`. |
-| `'high_dim_balanced'` | HNSW (hnswlib) | Best for >100D feature spaces, balanced. Requires `hnswlib`. |
-| `'high_dim_fast'` | HNSW (hnswlib) | Best for >100D feature spaces, faster. Requires `hnswlib`. |
-| `'custom'` | Your choice | Specify `finder='knn'/'faiss'/'annoy'/'hnsw'` and pass finder kwargs directly. |
-
-> **Note on Annoy:** `AnnoyNeighborFinder` is available via `preset='custom', finder='annoy'` but has a known bug on Apple Silicon (M1/M2/M3) where it returns only 1 neighbor regardless of settings. Use FAISS presets on macOS ARM64.
-
-### Auto-selection
+| `'exact'` | sklearn KNN | Val set < 10K samples, or < 20 features |
+| `'balanced'` | FAISS IVF | 10K–100K samples, moderate dimensionality *(default)* |
+| `'fast'` | FAISS IVF | Same range, willing to trade ~3% recall for speed |
+| `'turbo'` | FAISS Flat | Large datasets where exact results still needed |
+| `'high_dim_balanced'` | HNSW | > 100 features |
+| `'high_dim_fast'` | HNSW | > 100 features, prioritise speed |
 
 ```python
+# Print all presets with full parameters
+from ensemble_weights import list_presets
+list_presets()
+```
+
+### Custom preset
+
+```python
+router = KNNDWS(
+    task='regression', metric='mae', mode='min', k=20,
+    preset='custom', finder='faiss', index_type='ivf', n_probes=80,
+)
+```
+
+### Auto-select based on data size
+
+```python
+from ensemble_weights import DynamicRouter
+
 router = DynamicRouter.from_data_size(
-    n_samples=50_000,   # validation set size
-    n_features=15,
-    n_queries=1_000,    # optional: expected test set size; influences fit/predict tradeoff
+    n_samples=50_000,
+    n_features=12,
     task='regression',
-    dtype='tabular',
-)
-```
-
-`from_data_size` selects a preset based on dataset dimensions and optionally the expected query volume — ANN methods have higher fit cost but lower per-query cost, so if `n_queries` is small relative to `n_samples`, exact search may be faster overall.
-
-```python
-DynamicRouter.list_presets()  # print all presets with descriptions
-```
-
----
-
-## Tuning
-
-### `threshold` (knn-dw only)
-
-After per-neighborhood normalization, any model scoring below this fraction of the local best is excluded from the softmax blend entirely.
-
-| Value | Behavior |
-|---|---|
-| `0.0` | No gate — all models always contribute |
-| `0.5` | Only models within 50% of the local best contribute (default) |
-| `1.0` | Equivalent to OLA — only the single best model contributes |
-
-A value of `0.5` works well in practice. Lower values allow more blending; higher values produce harder routing.
-
-### `temperature`
-
-Controls softmax sharpness in `knn-dw`. Passed to `.predict()`, not the constructor.
-
-| Value | Behavior |
-|---|---|
-| `0.1` | Near-hard routing; soft only when models are genuinely tied. **Recommended for regression.** |
-| `1.0` | Moderate blending. **Recommended for classification.** |
-| `> 1.0` | Increasingly uniform weights regardless of local performance |
-
-When `temperature=None` (default), it is set automatically based on `mode`: `0.1` for `'min'` metrics (regression), `1.0` for `'max'` metrics (classification).
-
-### `k`
-
-Number of validation neighbors per query. More neighbors = smoother, more stable local estimates, but less sensitivity to sharp regional boundaries. `k=20` is a reasonable default; consider `k=10–15` for smaller validation sets (<2K samples).
-
----
-
-## Feature Scaling
-
-The neighbor search operates in raw feature space. If your features have different scales, standardize them before passing to the router — otherwise high-magnitude features will dominate distance calculations and neighborhoods will be meaningless.
-
-```python
-from sklearn.preprocessing import StandardScaler
-
-# Fit scaler on validation set only — not train or test
-scaler = StandardScaler().fit(X_val)
-X_val_scaled  = scaler.transform(X_val)
-X_test_scaled = scaler.transform(X_test)
-
-router.fit(X_val_scaled, y_val, val_preds)
-weights = router.predict(X_test_scaled)
-```
-
-This does not apply to the base models themselves, only to the features passed to the router.
-
----
-
-## When DES Works Well
-
-DES provides the most benefit when:
-
-- **Models have orthogonal failure modes** — e.g. a linear model dominates in smooth regions while KNN dominates in dense clusters. If all models fail on the same samples, there is nothing to route between.
-- **The validation set is large enough** — local estimates from K neighbors are noisy. At least ~1,000 val samples is recommended; very small val sets (< 300) produce unreliable local scores.
-- **Input space has regional structure** — distinct regimes where different models genuinely perform differently (geographic clusters, temporal patterns, distinct subpopulations).
-
-DES will match or slightly underperform a fixed global ensemble when one model dominates everywhere, or when val set size is too small to estimate local performance reliably.
-
----
-
-## Custom Neighbor Finders
-
-Use `preset='custom'` to configure a finder directly:
-
-```python
-# Custom FAISS IVF with specific parameters
-router = DynamicRouter(
-    task='regression', dtype='tabular', method='knn-dw',
-    metric='mae', mode='min', k=20,
-    preset='custom', finder='faiss',
-    index_type='ivf', n_cells=64, n_probes=20,
-)
-
-# Custom HNSW with nmslib backend
-router = DynamicRouter(
-    task='regression', dtype='tabular', method='knn-dw',
-    metric='mae', mode='min', k=20,
-    preset='custom', finder='hnsw',
-    backend='nmslib', M=32, ef_construction=400, ef_search=200,
-)
-```
-
-Or instantiate a finder directly:
-
-```python
-from ensemble_weights.models.neighbors import FaissNeighborFinder
-from ensemble_weights.models.knndws import KNNModel
-
-finder = FaissNeighborFinder(k=20, index_type='ivf', n_probes=50)
-model = KNNModel(metric=lambda y, p: abs(y - p), mode='min',
-                 neighbor_finder=finder, threshold=0.5)
-model.fit(X_val, y_val, val_preds)
-```
-
----
-
-## Image Tasks
-
-For image inputs, pass a `feature_extractor` to map raw images to a meaningful embedding space before neighbor search:
-
-```python
-import torchvision.models as models
-import torch
-
-resnet = models.resnet50(pretrained=True)
-extractor = lambda x: resnet(torch.tensor(x)).detach().numpy()
-
-router = DynamicRouter(
-    task='classification', dtype='image', method='knn-dw',
-    metric='accuracy', mode='max', k=10,
-    preset='high_dim_balanced',
-    feature_extractor=extractor,
+    method='knn-dws',
+    metric='mae',
+    mode='min',
+    k=20,
+    n_queries=4_000,   # optional: test set size, used to weigh ANN fit cost
 )
 ```
 
 ---
 
-## License
+## Benchmarking across multiple seeds
 
-MIT
+For benchmarks, use `DynamicRouter` to select algorithms via string in a loop:
+
+```python
+from ensemble_weights import DynamicRouter
+
+for method in ['knn-dws', 'ola', 'knora-u', 'knora-e']:
+    router = DynamicRouter(
+        task='classification',
+        method=method,
+        metric='log_loss',
+        mode='min',
+        k=20,
+    )
+    router.fit(X_val, y_val, val_probas)
+    weights = router.predict(X_test)
+```
+
+See `tests/showcase.py` for a full benchmark across four datasets (California Housing, Bike Sharing, Letter Recognition, Phoneme) and `tests/multi_run.py` for 30-seed averaged results.
+
+---
+
+## Empirical results (30 seeds)
+
+| Dataset | Best Single | Global Ensemble | KNNDWS | KNORAU |
+|---|---|---|---|---|
+| California Housing (MAE ↓) | 0.3452 | 0.3449 | **0.3414** | 0.3672 |
+| Bike Sharing (MAE ↓) | 42.83 | 42.83 | **42.65** | 51.45 |
+| Letter Recognition (Acc ↑) | 93.79% | 94.52% | 94.92% | **95.15%** |
+| Phoneme (Acc ↑) | 86.64% | **87.27%** | 86.64% | 86.73% |
+
+Key takeaways: **KNNDWS is the robust default** — it never performs worse than the best single model and consistently improves on it where local structure exists. **KNORAU is the specialist** — on multi-class classification with diverse models it can outperform KNNDWS. **Phoneme** illustrates the DES failure mode: when one model dominates globally and the feature space has no coherent regions of model diversity, a fixed global ensemble beats all routing algorithms.
+
+---
+
+## Package structure
+
+```
+ensemble_weights/
+├── __init__.py          # Top-level imports: KNNDWS, OLA, KNORAU, KNORAE, DynamicRouter
+├── metrics.py           # Named metric functions: mae, log_loss, etc.
+├── neighbors.py         # Neighbor finder backends: KNN, FAISS, Annoy, HNSW
+├── router.py            # DynamicRouter: string-based factory for benchmark loops
+├── utils.py             # to_numpy, add_batch_dim
+├── _config.py           # Internal: SPEED_PRESETS, make_finder, prep_fit_inputs
+├── base/
+│   ├── base.py          # BaseRouter abstract class
+│   └── knnbase.py       # KNNBase: score matrix construction, shared fit()
+└── des/
+    ├── knndws.py        # KNNDWS
+    ├── ola.py           # OLA
+    ├── knorau.py        # KNORAU
+    └── knorae.py        # KNORAE
+```
+
+Files with a leading underscore (`_config.py`) are internal implementation details and are not part of the public API.
+
+---
+
+## Algorithm selection guide
+
+```
+Do your models have distinct regional strengths?
+├── No  → Use a fixed global ensemble (Nelder-Mead on val set). DES won't help.
+└── Yes → What task?
+    ├── Regression
+    │   └── Use KNNDWS (threshold=0.5, temperature=0.1)
+    │       KNORAU/KNORAE are not well-suited to regression — see note below.
+    └── Classification
+        ├── Start with KNNDWS (metric='log_loss', threshold=0.5, temperature=1.0)
+        ├── Try KNORAU if you have many models with clear per-region dominance
+        └── Avoid KNORAE unless neighborhoods are very clean — it's too aggressive
+```
+
+**Why KNORAU/KNORAE underperform on regression:** These algorithms apply a binary competence criterion per neighbor (above/below threshold). After per-neighbor normalization, the best model always maps to 1.0 and the worst to 0.0 — regardless of the actual gap between them. A model that is 70% worse than the best can score 0.52 after normalization and earn equal votes. Setting `threshold=1.0` partially recovers the oracle criterion, but the fundamental mismatch between binary voting and continuous error remains.
+
+---
+
+## Extending the library
+
+### Custom metric
+
+Any callable with signature `(y_true, y_pred) -> float` works:
+
+```python
+import numpy as np
+
+def huber(y_true, y_pred, delta=1.0):
+    r = abs(y_true - y_pred)
+    return r if r <= delta else delta * r - 0.5 * delta ** 2
+
+router = KNNDWS(task='regression', metric=huber, mode='min', k=20)
+```
+
+### Custom neighbor finder
+
+Subclass `NeighborFinder` from `neighbors.py` and implement `fit(X)` and `kneighbors(X, k=None)`, then pass it via `preset='custom'`:
+
+```python
+router = KNNDWS(
+    task='regression', metric='mae', mode='min', k=20,
+    preset='custom', finder='knn',   # or swap in your own finder via _config.make_finder
+)
+```
+
+### New algorithm
+
+Subclass `KNNBase` from `base/knnbase.py`, implement `fit()` (call `prep_fit_inputs` then `super().fit()`) and `predict()`. The score matrix `self.matrix` is always shape `(n_val, n_models)` with higher-is-better scores. See `des/knndws.py` as the reference implementation.

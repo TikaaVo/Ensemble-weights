@@ -59,7 +59,17 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-from ensemble_weights import DynamicRouter
+from ensemble_weights.des.knndws import KNNDWS
+from ensemble_weights.des.ola    import OLA
+from ensemble_weights.des.knorau import KNORAU
+from ensemble_weights.des.knorae import KNORAE
+
+_DES_CLASSES = {
+    'knn-dws': KNNDWS,
+    'ola':     OLA,
+    'knora-u': KNORAU,
+    'knora-e': KNORAE,
+}
 
 warnings.filterwarnings('ignore')
 
@@ -152,9 +162,8 @@ def show_timing(methods, fit_times, predict_times, n_test):
 
 def _make_router(task, method, metric, mode, k, preset='balanced'):
     with contextlib.redirect_stdout(io.StringIO()):
-        return DynamicRouter(
-            task=task, dtype='tabular', method=method,
-            metric=metric, mode=mode, k=k, preset=preset,
+        return _DES_CLASSES[method](
+            task=task, metric=metric, mode=mode, k=k, preset=preset,
         )
 
 

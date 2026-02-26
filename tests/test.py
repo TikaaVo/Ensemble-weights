@@ -430,7 +430,7 @@ class TestDynamicRouterIntegration:
         features = np.random.randn(n_samples, n_features).astype(np.float32)
         y = np.random.randint(0, 2, n_samples)
 
-        # Two models with different performance
+        # Two des with different performance
         pred_A = np.random.randint(0, 2, n_samples)
         pred_B = np.random.randint(0, 2, n_samples)
 

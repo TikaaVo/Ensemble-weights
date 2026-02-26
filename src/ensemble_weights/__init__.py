@@ -73,7 +73,7 @@ class DynamicRouter:
     Main entry point for Dynamic Ensemble Selection.
 
     Fits a routing model on a held-out validation set and assigns per-sample
-    weights to a pool of pre-trained models at inference time.
+    weights to a pool of pre-trained des at inference time.
 
     Parameters
     ----------
