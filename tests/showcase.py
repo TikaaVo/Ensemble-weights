@@ -59,16 +59,18 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-from ensemble_weights.des.knndws import KNNDWS
-from ensemble_weights.des.ola    import OLA
-from ensemble_weights.des.knorau import KNORAU
-from ensemble_weights.des.knorae import KNORAE
+from ensemble_weights.des.knndws   import KNNDWS
+from ensemble_weights.des.ola      import OLA
+from ensemble_weights.des.knorau   import KNORAU
+from ensemble_weights.des.knorae   import KNORAE
+from ensemble_weights.des.knoraiu import KNORAIU
 
 _DES_CLASSES = {
-    'knn-dws': KNNDWS,
-    'ola':     OLA,
-    'knora-u': KNORAU,
-    'knora-e': KNORAE,
+    'knn-dws':  KNNDWS,
+    'ola':      OLA,
+    'knora-u':  KNORAU,
+    'knora-e':  KNORAE,
+    'knora-iu': KNORAIU,
 }
 
 warnings.filterwarnings('ignore')
@@ -81,10 +83,11 @@ K_REG    = 20
 TEMP_REG = 0.1
 
 THRESHOLDS_REG = {
-    'knn-dws': 0.5,
-    'ola':     0.5,
-    'knora-u': 1.0,
-    'knora-e': 1.0,
+    'knn-dws':  0.5,
+    'ola':      0.5,
+    'knora-u':  1.0,
+    'knora-e':  1.0,
+    'knora-iu': 1.0,
 }
 
 # ── Classification settings ───────────────────────────────────────────
@@ -92,13 +95,14 @@ K_CLF    = 20
 TEMP_CLF = 1.0
 
 THRESHOLDS_CLF = {
-    'knn-dws': 0.5,
-    'ola':     0.5,
-    'knora-u': 0.5,
-    'knora-e': 0.5,
+    'knn-dws':  0.5,
+    'ola':      0.5,
+    'knora-u':  0.5,
+    'knora-e':  0.5,
+    'knora-iu': 0.5,
 }
 
-DES_METHODS = ['knn-dws', 'ola', 'knora-u', 'knora-e']
+DES_METHODS = ['knn-dws', 'ola', 'knora-u', 'knora-e', 'knora-iu']
 
 
 # ── Display helpers ───────────────────────────────────────────────────
@@ -161,6 +165,7 @@ def show_timing(methods, fit_times, predict_times, n_test):
 
 
 def _make_router(task, method, metric, mode, k, preset='balanced'):
+    """Instantiate the appropriate DES algorithm class, suppressing the preset print."""
     with contextlib.redirect_stdout(io.StringIO()):
         return _DES_CLASSES[method](
             task=task, metric=metric, mode=mode, k=k, preset=preset,
@@ -314,8 +319,9 @@ def _method_label_reg(method):
     return {
         'knn-dws':  f'knn-dws  (gate={THRESHOLDS_REG["knn-dws"]}, T={TEMP_REG})',
         'ola':       'OLA',
-        'knora-u':  f'KNORA-U  (threshold={THRESHOLDS_REG["knora-u"]})',
-        'knora-e':  f'KNORA-E  (threshold={THRESHOLDS_REG["knora-e"]})',
+        'knora-u':  f'KNORA-U   (threshold={THRESHOLDS_REG["knora-u"]})',
+        'knora-e':  f'KNORA-E   (threshold={THRESHOLDS_REG["knora-e"]})',
+        'knora-iu': f'KNORA-IU  (threshold={THRESHOLDS_REG["knora-iu"]})',
     }[method]
 
 
@@ -410,8 +416,9 @@ def _method_label_clf(method):
     return {
         'knn-dws':  f'knn-dws  (gate={THRESHOLDS_CLF["knn-dws"]}, T={TEMP_CLF})',
         'ola':       'OLA',
-        'knora-u':  f'KNORA-U  (threshold={THRESHOLDS_CLF["knora-u"]})',
-        'knora-e':  f'KNORA-E  (threshold={THRESHOLDS_CLF["knora-e"]})',
+        'knora-u':  f'KNORA-U   (threshold={THRESHOLDS_CLF["knora-u"]})',
+        'knora-e':  f'KNORA-E   (threshold={THRESHOLDS_CLF["knora-e"]})',
+        'knora-iu': f'KNORA-IU  (threshold={THRESHOLDS_CLF["knora-iu"]})',
     }[method]
 
 

@@ -57,8 +57,8 @@ class KNORAU(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
-        self.task         = task
-        self.threshold    = threshold
+        self.task = task
+        self.threshold= threshold
         self._metric_name = metric_name
 
     def fit(self, features, y, preds_dict):
@@ -97,28 +97,28 @@ class KNORAU(KNNBase):
         """
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
-        _, indices      = self.model.kneighbors(x)
+        _, indices = self.model.kneighbors(x)
         neighbor_scores = self.matrix[indices]   # (batch, k, n_models)
 
         # Normalize per neighbor: best model on each neighbor = 1.0, worst = 0.0.
         # When all models score equally (range = 0), every model gets norm = 0,
         # so no one earns a vote — correct, since there is no signal to route on.
-        n_min   = neighbor_scores.min(axis=2, keepdims=True)
-        n_max   = neighbor_scores.max(axis=2, keepdims=True)
+        n_min = neighbor_scores.min(axis=2, keepdims=True)
+        n_max = neighbor_scores.max(axis=2, keepdims=True)
         n_range = n_max - n_min
-        norm    = (neighbor_scores - n_min) / np.where(n_range > 0, n_range, 1.0)
+        norm = (neighbor_scores - n_min) / np.where(n_range > 0, n_range, 1.0)
 
         # votes[b, j] = number of neighbors where model j exceeds the threshold.
-        votes       = (norm >= th).sum(axis=1).astype(float)   # (batch, n_models)
+        votes = (norm >= th).sum(axis=1).astype(float)   # (batch, n_models)
         total_votes = votes.sum(axis=1, keepdims=True)
 
         # Normalize vote counts to weights that sum to 1.
         # If no model earns any votes, fall back to uniform weights.
         any_votes = total_votes > 0
-        weights   = np.where(
+        weights = np.where(
             any_votes,
             votes / np.where(any_votes, total_votes, 1.0),
             np.full_like(votes, 1.0 / len(self.models)),

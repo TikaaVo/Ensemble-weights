@@ -16,18 +16,20 @@ for example in benchmark loops:
     for method in ['knn-dws', 'ola', 'knora-u', 'knora-e']:
         router = DynamicRouter(task='classification', method=method, ...)
 """
-from ensemble_weights.des.knndws import KNNDWS
-from ensemble_weights.des.ola    import OLA
-from ensemble_weights.des.knorau import KNORAU
-from ensemble_weights.des.knorae import KNORAE
-from ensemble_weights._config    import SPEED_PRESETS, list_presets
-from ensemble_weights.utils      import to_numpy, add_batch_dim
+from ensemble_weights.des.knndws   import KNNDWS
+from ensemble_weights.des.ola      import OLA
+from ensemble_weights.des.knorau   import KNORAU
+from ensemble_weights.des.knorae   import KNORAE
+from ensemble_weights.des.knoraiu import KNORAIU
+from ensemble_weights._config      import SPEED_PRESETS, list_presets
+from ensemble_weights.utils        import to_numpy, add_batch_dim
 
 _METHOD_CLASSES = {
-    'knn-dws': KNNDWS,
-    'ola':     OLA,
-    'knora-u': KNORAU,
-    'knora-e': KNORAE,
+    'knn-dws':  KNNDWS,
+    'ola':      OLA,
+    'knora-u':  KNORAU,
+    'knora-e':  KNORAE,
+    'knora-iu': KNORAIU,
 }
 
 
@@ -137,10 +139,8 @@ class DynamicRouter:
 
         if self._method == 'knn-dws':
             return self._des.predict(x, temperature=temperature, threshold=threshold)
-        elif self._method == 'ola':
-            return self._des.predict(x)
         else:
-            return self._des.predict(x, threshold=threshold)
+            return self._des.predict(x, temperature=temperature, threshold=threshold)
 
     # ── Class methods ─────────────────────────────────────────────────
 

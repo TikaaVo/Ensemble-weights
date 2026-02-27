@@ -53,7 +53,7 @@ DEFAULT_N_SEEDS = 50
 
 def make_seeds(n):
     """Seeds 0..n-1: deterministic and easy to extend by raising n."""
-    return list(range(50,n+50))
+    return list(range(n))
 
 
 # Each entry: (loader, run_fn, extra_kwargs, label, metric_name, higher_is_better)
