@@ -25,7 +25,7 @@ class OLA(KNNBase):
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 preset='balanced', **kwargs):
+                 preset='balanced', threshold=None, **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)

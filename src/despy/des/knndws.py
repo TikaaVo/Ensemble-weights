@@ -112,7 +112,10 @@ class KNNDWS(KNNBase):
         exp_scores = np.exp((norm_scores - max_scores) / t)
         if th > 0:
             exp_scores = exp_scores * gate
-        weights = exp_scores / exp_scores.sum(axis=1, keepdims=True)
+        total = exp_scores.sum(axis=1, keepdims=True)
+        weights = np.where(total > 0,
+                           exp_scores / np.where(total > 0, total, 1.0),
+                           np.full_like(exp_scores, 1.0 / len(self.models)))
 
         if batch_size == 1:
             return dict(zip(self.models, weights[0]))

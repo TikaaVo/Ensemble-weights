@@ -124,7 +124,7 @@ def analyze(features, y, preds_dict, metric, mode, k=20, verbose=True):
     else:
         oracle_gain = 0.0
 
-    # Empirically, DES captures roughly 3–5% of oracle headroom.
+    # Empirically, DES captures roughly 1-5% of oracle headroom.
     estimated_gain = oracle_gain * 0.02
 
     # Regional diversity
