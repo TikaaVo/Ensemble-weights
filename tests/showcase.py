@@ -58,12 +58,12 @@ from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-from ensemble_weights.des.knndws   import KNNDWS
-from ensemble_weights.des.ola      import OLA
-from ensemble_weights.des.knorau   import KNORAU
-from ensemble_weights.des.knorae   import KNORAE
-from ensemble_weights.des.knoraiu import KNORAIU
-from ensemble_weights import analyze
+from despy.des.knndws   import KNNDWS
+from despy.des.ola      import OLA
+from despy.des.knorau   import KNORAU
+from despy.des.knorae   import KNORAE
+from despy.des.knoraiu import KNORAIU
+from despy import analyze
 
 _DES_CLASSES = {
     'knn-dws':  KNNDWS,

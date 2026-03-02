@@ -3,13 +3,13 @@ DynamicRouter — string-based factory for programmatic algorithm selection.
 
 Use DynamicRouter when you need to choose an algorithm via a string at runtime.
 """
-from ensemble_weights.des.knndws   import KNNDWS
-from ensemble_weights.des.ola      import OLA
-from ensemble_weights.des.knorau   import KNORAU
-from ensemble_weights.des.knorae   import KNORAE
-from ensemble_weights.des.knoraiu import KNORAIU
-from ensemble_weights._config      import SPEED_PRESETS, list_presets
-from ensemble_weights.utils        import to_numpy, add_batch_dim
+from despy.des.knndws   import KNNDWS
+from despy.des.ola      import OLA
+from despy.des.knorau   import KNORAU
+from despy.des.knorae   import KNORAE
+from despy.des.knoraiu import KNORAIU
+from despy._config      import SPEED_PRESETS, list_presets
+from despy.utils        import to_numpy, add_batch_dim
 
 _METHOD_CLASSES = {
     'knn-dws':  KNNDWS,

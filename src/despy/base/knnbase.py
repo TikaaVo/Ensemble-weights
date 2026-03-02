@@ -1,4 +1,4 @@
-from ensemble_weights.base.base import BaseRouter
+from despy.base.base import BaseRouter
 import numpy as np
 
 

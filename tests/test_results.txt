@@ -10,9 +10,6 @@
   Global Ensemble  (Nelder-Mead)                   0.3452    0.0050     0.3308     0.3571     -0.07%
   DES knn-dws  (gate=0.5, T=0.1)                   0.3412    0.0057     0.3265     0.3552     -1.22%  <
   DES OLA                                          0.3432    0.0058     0.3285     0.3568     -0.63%
-  DES KNORA-U   (threshold=1.0)                    0.3673    0.0058     0.3530     0.3854     +6.33%
-  DES KNORA-E   (threshold=1.0)                    0.3874    0.0074     0.3689     0.4088    +12.14%
-  DES KNORA-IU  (threshold=1.0)                    0.3664    0.0058     0.3521     0.3845     +6.07%
 
   Per-seed (MAE):
     seed  0  seed  1  seed  2  seed  3  seed  4  seed  5  seed  6  seed  7  seed  8  seed  9  seed 10  seed 11  seed 12  seed 13  seed 14  seed 15  seed 16  seed 17  seed 18  seed 19  seed 20  seed 21  seed 22  seed 23  seed 24  seed 25  seed 26  seed 27  seed 28  seed 29  seed 30  seed 31  seed 32  seed 33  seed 34  seed 35  seed 36  seed 37  seed 38  seed 39  seed 40  seed 41  seed 42  seed 43  seed 44  seed 45  seed 46  seed 47  seed 48  seed 49
@@ -32,9 +29,6 @@
   Global Ensemble  (Nelder-Mead)                  42.9096    0.8627    40.8957    44.6697     +0.00%
   DES knn-dws  (gate=0.5, T=0.1)                  42.6897    0.8384    40.9556    44.3411     -0.51%  <
   DES OLA                                         42.9604    0.8470    41.1115    44.7533     +0.12%
-  DES KNORA-U   (threshold=1.0)                   51.5234    1.0416    49.1569    53.6175    +20.07%
-  DES KNORA-E   (threshold=1.0)                   52.6826    1.0099    50.0285    54.6007    +22.78%
-  DES KNORA-IU  (threshold=1.0)                   51.0201    1.0297    48.6902    53.0482    +18.90%
 
   Per-seed (MAE):
     seed  0  seed  1  seed  2  seed  3  seed  4  seed  5  seed  6  seed  7  seed  8  seed  9  seed 10  seed 11  seed 12  seed 13  seed 14  seed 15  seed 16  seed 17  seed 18  seed 19  seed 20  seed 21  seed 22  seed 23  seed 24  seed 25  seed 26  seed 27  seed 28  seed 29  seed 30  seed 31  seed 32  seed 33  seed 34  seed 35  seed 36  seed 37  seed 38  seed 39  seed 40  seed 41  seed 42  seed 43  seed 44  seed 45  seed 46  seed 47  seed 48  seed 49
@@ -79,7 +73,6 @@
   DES KNORA-U   (threshold=0.5)                    86.82%    0.99%     84.55%     89.36%     -0.07%
   DES KNORA-E   (threshold=0.5)                    86.21%    0.99%     83.63%     87.88%     -0.78%
   DES KNORA-IU  (threshold=0.5)                    87.08%    1.00%     84.83%     89.45%     +0.22%
-  Best Single  (KNN Classifier)                    85.89%    1.43%     84.46%     87.33%     -1.14%
 
   Per-seed (Accuracy):
     seed  0  seed  1  seed  2  seed  3  seed  4  seed  5  seed  6  seed  7  seed  8  seed  9  seed 10  seed 11  seed 12  seed 13  seed 14  seed 15  seed 16  seed 17  seed 18  seed 19  seed 20  seed 21  seed 22  seed 23  seed 24  seed 25  seed 26  seed 27  seed 28  seed 29  seed 30  seed 31  seed 32  seed 33  seed 34  seed 35  seed 36  seed 37  seed 38  seed 39  seed 40  seed 41  seed 42  seed 43  seed 44  seed 45  seed 46  seed 47  seed 48  seed 49

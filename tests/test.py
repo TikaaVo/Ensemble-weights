@@ -4,7 +4,7 @@ Tests all neighbor finders, edge cases, and integration with DynamicRouter.
 
 Run with: pytest test_comprehensive.py -v
 Run specific test: pytest test_comprehensive.py::TestAnnoyFinder -v
-Run with coverage: pytest test_comprehensive.py --cov=ensemble_weights
+Run with coverage: pytest test_comprehensive.py --cov=despy
 """
 import pytest
 import numpy as np
@@ -73,7 +73,7 @@ class TestKNNFinder:
 
     def test_exact_match_with_ground_truth(self, synthetic_data, ground_truth):
         """KNN should match sklearn ground truth exactly."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         X_train, X_test = synthetic_data
         true_distances, true_indices = ground_truth
@@ -90,7 +90,7 @@ class TestKNNFinder:
 
     def test_single_query(self, synthetic_data):
         """Test single query returns correct shape."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         X_train, X_test = synthetic_data
         k = 10
@@ -105,7 +105,7 @@ class TestKNNFinder:
 
     def test_batch_query(self, synthetic_data):
         """Test batch query returns correct shape."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         X_train, X_test = synthetic_data
         k = 10
@@ -128,7 +128,7 @@ class TestFAISSFlat:
 
     def test_exact_search_high_dim(self, synthetic_data, ground_truth):
         """FAISS Flat should be exact in high dimensions."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -150,7 +150,7 @@ class TestFAISSFlat:
 
     def test_low_dimension_warning(self, synthetic_data):
         """FAISS Flat should warn about low dimensions."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -170,7 +170,7 @@ class TestFAISSFlat:
 
     def test_returns_k_neighbors(self, synthetic_data):
         """FAISS Flat should always return exactly k neighbors."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         X_train, X_test = synthetic_data
         k = 10
@@ -192,7 +192,7 @@ class TestFAISSIVF:
 
     def test_high_recall_with_enough_probes(self, synthetic_data, ground_truth):
         """FAISS IVF should have high recall with n_probes=50."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -215,7 +215,7 @@ class TestFAISSIVF:
 
     def test_low_probes_warning(self, synthetic_data):
         """FAISS IVF should warn about low n_probes."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         X_train, X_test = synthetic_data
         n_samples = X_train.shape[0]
@@ -236,7 +236,7 @@ class TestFAISSIVF:
 
     def test_auto_ncells_computation(self, synthetic_data):
         """FAISS IVF should auto-compute n_cells correctly."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         X_train, X_test = synthetic_data
         n_samples = X_train.shape[0]
@@ -261,7 +261,7 @@ class TestAnnoyFinder:
 
     def test_returns_exactly_k_neighbors(self, synthetic_data):
         """Annoy must return exactly k neighbors or raise error."""
-        from ensemble_weights.models.neighbors import AnnoyNeighborFinder
+        from despy.models.neighbors import AnnoyNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -285,7 +285,7 @@ class TestAnnoyFinder:
 
     def test_high_recall_in_high_dimensions(self, synthetic_data, ground_truth):
         """Annoy should have good recall in high dimensions."""
-        from ensemble_weights.models.neighbors import AnnoyNeighborFinder
+        from despy.models.neighbors import AnnoyNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -313,7 +313,7 @@ class TestAnnoyFinder:
 
     def test_low_dimension_warning(self, synthetic_data):
         """Annoy should warn about low dimensions."""
-        from ensemble_weights.models.neighbors import AnnoyNeighborFinder
+        from despy.models.neighbors import AnnoyNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -333,7 +333,7 @@ class TestAnnoyFinder:
 
     def test_search_k_auto_computation(self):
         """Annoy should compute search_k automatically."""
-        from ensemble_weights.models.neighbors import AnnoyNeighborFinder
+        from despy.models.neighbors import AnnoyNeighborFinder
 
         finder = AnnoyNeighborFinder(k=10, n_trees=100, search_k=-1)
 
@@ -352,7 +352,7 @@ class TestHNSWFinder:
     @pytest.mark.parametrize("backend", ["hnswlib"])  # Can add "nmslib" if available
     def test_high_recall_in_high_dimensions(self, synthetic_data, ground_truth, backend):
         """HNSW should have high recall in high dimensions."""
-        from ensemble_weights.models.neighbors import HNSWNeighborFinder
+        from despy.models.neighbors import HNSWNeighborFinder
 
         X_train, X_test = synthetic_data
         n_features = X_train.shape[1]
@@ -385,7 +385,7 @@ class TestHNSWFinder:
 
     def test_low_ef_construction_warning(self, synthetic_data):
         """HNSW should warn about low ef_construction for large datasets."""
-        from ensemble_weights.models.neighbors import HNSWNeighborFinder
+        from despy.models.neighbors import HNSWNeighborFinder
 
         X_train, X_test = synthetic_data
         n_samples = X_train.shape[0]
@@ -420,7 +420,7 @@ class TestDynamicRouterIntegration:
 
     def test_preset_balanced(self):
         """Test 'balanced' preset."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         # Generate synthetic ensemble data
         np.random.seed(42)
@@ -462,7 +462,7 @@ class TestDynamicRouterIntegration:
 
     def test_preset_exact(self):
         """Test 'exact' preset uses KNN."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         router = DynamicRouter(
             task='classification',
@@ -476,7 +476,7 @@ class TestDynamicRouterIntegration:
 
     def test_preset_turbo(self):
         """Test 'turbo' preset uses Annoy."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         router = DynamicRouter(
             task='classification',
@@ -490,7 +490,7 @@ class TestDynamicRouterIntegration:
 
     def test_from_data_size_small(self):
         """Test auto-selection for small dataset."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         router = DynamicRouter.from_data_size(
             n_samples=5000,
@@ -506,7 +506,7 @@ class TestDynamicRouterIntegration:
 
     def test_from_data_size_low_dim(self):
         """Test auto-selection for low dimensional data."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         router = DynamicRouter.from_data_size(
             n_samples=50000,
@@ -522,7 +522,7 @@ class TestDynamicRouterIntegration:
 
     def test_from_data_size_high_dim(self):
         """Test auto-selection for high dimensional data."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         router = DynamicRouter.from_data_size(
             n_samples=50000,
@@ -546,7 +546,7 @@ class TestEdgeCases:
 
     def test_k_equals_n_samples(self):
         """Test when k equals number of training samples."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         X_train = np.random.randn(50, 10).astype(np.float32)
         X_test = np.random.randn(5, 10).astype(np.float32)
@@ -559,7 +559,7 @@ class TestEdgeCases:
 
     def test_k_greater_than_n_samples(self):
         """Test when k is greater than number of training samples."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         X_train = np.random.randn(50, 10).astype(np.float32)
         X_test = np.random.randn(5, 10).astype(np.float32)
@@ -572,7 +572,7 @@ class TestEdgeCases:
 
     def test_1d_data(self):
         """Test with 1D data (edge case for ANN methods)."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder, FaissNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder, FaissNeighborFinder
 
         X_train = np.random.randn(1000, 1).astype(np.float32)
         X_test = np.random.randn(10, 1).astype(np.float32)
@@ -593,7 +593,7 @@ class TestEdgeCases:
 
     def test_empty_result_handling(self):
         """Test handling of edge cases with very small datasets."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         # Minimum viable dataset
         X_train = np.random.randn(10, 5).astype(np.float32)
@@ -616,7 +616,7 @@ class TestPerformance:
 
     def test_faiss_faster_than_knn_large_dataset(self):
         """FAISS should be faster than KNN on large datasets."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder, FaissNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder, FaissNeighborFinder
 
         # Large dataset
         n_samples = 50000
@@ -648,7 +648,7 @@ class TestPerformance:
 
     def test_query_time_scales_with_k(self):
         """Query time should scale reasonably with k."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         X_train = np.random.randn(10000, 50).astype(np.float32)
         X_test = np.random.randn(100, 50).astype(np.float32)
@@ -679,7 +679,7 @@ class TestValidation:
 
     def test_invalid_index_type(self):
         """Test invalid index type raises error."""
-        from ensemble_weights.models.neighbors import FaissNeighborFinder
+        from despy.models.neighbors import FaissNeighborFinder
 
         with pytest.raises((ValueError, AttributeError)):
             finder = FaissNeighborFinder(k=10, index_type='invalid')
@@ -688,7 +688,7 @@ class TestValidation:
 
     def test_invalid_preset(self):
         """Test invalid preset raises error."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         with pytest.raises(ValueError):
             DynamicRouter(
@@ -701,7 +701,7 @@ class TestValidation:
 
     def test_custom_preset_requires_finder(self):
         """Test custom preset requires finder parameter."""
-        from ensemble_weights.__init__ import DynamicRouter
+        from despy.__init__ import DynamicRouter
 
         with pytest.raises(ValueError):
             DynamicRouter(
@@ -715,7 +715,7 @@ class TestValidation:
 
     def test_negative_k(self):
         """Test negative k raises error."""
-        from ensemble_weights.models.neighbors import KNNNeighborFinder
+        from despy.models.neighbors import KNNNeighborFinder
 
         with pytest.raises((ValueError, Exception)):
             KNNNeighborFinder(k=-5)

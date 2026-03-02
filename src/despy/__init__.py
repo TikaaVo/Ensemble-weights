@@ -1,5 +1,5 @@
 """
-ensemble_weights — Dynamic Ensemble Selection library.
+despy — Dynamic Ensemble Selection library.
 
 Metrics
 -------
@@ -9,7 +9,7 @@ Pass a metric name string:
 
 Or import a metric function directly:
 
-    from ensemble_weights.metrics import log_loss, mae
+    from despy.metrics import log_loss, mae
 
     KNNDWS(task='classification', metric=log_loss, mode='min')
 
@@ -21,14 +21,14 @@ Available built-in metrics:
         'log_loss', 'prob_correct'
 """
 
-from ensemble_weights.des.knndws   import KNNDWS
-from ensemble_weights.des.ola      import OLA
-from ensemble_weights.des.knorau   import KNORAU
-from ensemble_weights.des.knorae   import KNORAE
-from ensemble_weights.des.knoraiu import KNORAIU
-from ensemble_weights.router       import DynamicRouter
-from ensemble_weights._config      import SPEED_PRESETS, list_presets
-from ensemble_weights.analysis     import analyze
+from despy.des.knndws   import KNNDWS
+from despy.des.ola      import OLA
+from despy.des.knorau   import KNORAU
+from despy.des.knorae   import KNORAE
+from despy.des.knoraiu import KNORAIU
+from despy.router       import DynamicRouter
+from despy._config      import SPEED_PRESETS, list_presets
+from despy.analysis     import analyze
 
 __all__ = [
     'KNNDWS',

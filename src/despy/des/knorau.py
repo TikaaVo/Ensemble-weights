@@ -1,15 +1,15 @@
 """
-KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
+KNORA-U: K-Nearest Oracles — Union.
 """
-from ensemble_weights.base.knnbase import KNNBase
-from ensemble_weights._config import make_finder, resolve_metric, prep_fit_inputs
-from ensemble_weights.utils import to_numpy
+from despy.base.knnbase import KNNBase
+from despy._config import make_finder, resolve_metric, prep_fit_inputs
+from despy.utils import to_numpy
 import numpy as np
 
 
-class KNORAIU(KNNBase):
+class KNORAU(KNNBase):
     """
-    KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
+    KNORA-U: K-Nearest Oracles — Union.
 
     Parameters
     ----------
@@ -35,8 +35,8 @@ class KNORAIU(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
-        self.task         = task
-        self.threshold    = threshold
+        self.task = task
+        self.threshold= threshold
         self._metric_name = metric_name
 
     def fit(self, features, y, preds_dict):
@@ -62,8 +62,8 @@ class KNORAIU(KNNBase):
         ----------
         x : array-like, shape (n_features,) or (n_samples, n_features)
         temperature : ignored
-            Accepted for API compatibility; KNORA-IU uses inverse-distance
-            weighted vote counts, not softmax.
+            Accepted for API compatibility; KNORA-U uses linear vote counts,
+            not softmax, so temperature has no effect.
         threshold : float, optional
             Overrides the instance threshold for this call.
 
@@ -71,38 +71,32 @@ class KNORAIU(KNNBase):
         -------
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
-            Weights are proportional to distance-weighted vote sums and sum to 1.
+            Weights are proportional to vote counts and sum to 1.
         """
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
-        distances, indices = self.model.kneighbors(x)   # both (batch, k)
-        neighbor_scores    = self.matrix[indices]        # (batch, k, n_models)
+        _, indices = self.model.kneighbors(x)
+        neighbor_scores = self.matrix[indices]   # (batch, k, n_models)
 
         # Normalize per neighbor
-        n_min   = neighbor_scores.min(axis=2, keepdims=True)
-        n_max   = neighbor_scores.max(axis=2, keepdims=True)
+        n_min = neighbor_scores.min(axis=2, keepdims=True)
+        n_max = neighbor_scores.max(axis=2, keepdims=True)
         n_range = n_max - n_min
-        norm    = (neighbor_scores - n_min) / np.where(n_range > 0, n_range, 1.0)
+        norm = (neighbor_scores - n_min) / np.where(n_range > 0, n_range, 1.0)
 
-        # competent[b, i, j] = True if model j passes the threshold on neighbor i.
-        competent = norm >= th                         # (batch, k, n_models)
-
-        # Inverse distance weights
-        inv_dist = 1.0 / np.maximum(distances, 1e-8)  # (batch, k)
-
-        # Weighted votes
-        votes = (competent * inv_dist[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
-        total = votes.sum(axis=1, keepdims=True)
+        # votes[b, j] = number of neighbors where model j exceeds the threshold.
+        votes = (norm >= th).sum(axis=1).astype(float)   # (batch, n_models)
+        total_votes = votes.sum(axis=1, keepdims=True)
 
         # Normalize to weights that sum to 1.
         # Uniform fallback if no model earned any votes.
-        any_votes = total > 0
-        weights   = np.where(
+        any_votes = total_votes > 0
+        weights = np.where(
             any_votes,
-            votes / np.where(any_votes, total, 1.0),
+            votes / np.where(any_votes, total_votes, 1.0),
             np.full_like(votes, 1.0 / len(self.models)),
         )
 

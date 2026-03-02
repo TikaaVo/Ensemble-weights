@@ -1,9 +1,9 @@
 """
 OLA: Overall Local Accuracy.
 """
-from ensemble_weights.base.knnbase import KNNBase
-from ensemble_weights._config import make_finder, resolve_metric, prep_fit_inputs
-from ensemble_weights.utils import to_numpy
+from despy.base.knnbase import KNNBase
+from despy._config import make_finder, resolve_metric, prep_fit_inputs
+from despy.utils import to_numpy
 import numpy as np
 
 

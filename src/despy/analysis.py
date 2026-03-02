@@ -8,9 +8,9 @@ The function prints a formatted report and returns a dict of raw metrics for
 programmatic use.
 """
 import numpy as np
-from ensemble_weights._config    import resolve_metric, prep_fit_inputs
-from ensemble_weights.base.knnbase import KNNBase
-from ensemble_weights.neighbors  import KNNNeighborFinder
+from despy._config    import resolve_metric, prep_fit_inputs
+from despy.base.knnbase import KNNBase
+from despy.neighbors  import KNNNeighborFinder
 
 # Internal helpers
 

@@ -1,15 +1,15 @@
 """
-KNORAE: K-Nearest Oracles — Eliminate.
+KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
 """
-from ensemble_weights.base.knnbase import KNNBase
-from ensemble_weights._config import make_finder, resolve_metric, prep_fit_inputs
-from ensemble_weights.utils import to_numpy
+from despy.base.knnbase import KNNBase
+from despy._config import make_finder, resolve_metric, prep_fit_inputs
+from despy.utils import to_numpy
 import numpy as np
 
 
-class KNORAE(KNNBase):
+class KNORAIU(KNNBase):
     """
-    KNORAE: K-Nearest Oracles — Eliminate.
+    KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
 
     Parameters
     ----------
@@ -22,7 +22,8 @@ class KNORAE(KNNBase):
     k : int
         Neighborhood size. Default: 10.
     threshold : float
-        Per-neighbor competence cutoff on the [0, 1] normalized scale.
+        Per-neighbor competence cutoff on the [0, 1] normalized scale
+        (1.0 = best model on that neighbor, 0.0 = worst).
         Classification with log_loss: 0.5 (default).
         Regression: use 1.0.
     preset : str
@@ -61,8 +62,8 @@ class KNORAE(KNNBase):
         ----------
         x : array-like, shape (n_features,) or (n_samples, n_features)
         temperature : ignored
-            Accepted for API compatibility; KNORA-E weights surviving models
-            equally, not via softmax, so temperature has no effect.
+            Accepted for API compatibility; KNORA-IU uses inverse-distance
+            weighted vote counts, not softmax.
         threshold : float, optional
             Overrides the instance threshold for this call.
 
@@ -70,48 +71,40 @@ class KNORAE(KNNBase):
         -------
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
-            The surviving models share weight equally.
+            Weights are proportional to distance-weighted vote sums and sum to 1.
         """
         th = threshold if threshold is not None else self.threshold
 
         x          = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
-        n_models   = len(self.models)
 
-        _, indices      = self.model.kneighbors(x)
-        k               = indices.shape[1]
-        neighbor_scores = self.matrix[indices]   # (batch, k, n_models)
+        distances, indices = self.model.kneighbors(x)   # both (batch, k)
+        neighbor_scores    = self.matrix[indices]        # (batch, k, n_models)
 
-        # Normalize per neighbor independently.
+        # Normalize per neighbor
         n_min   = neighbor_scores.min(axis=2, keepdims=True)
         n_max   = neighbor_scores.max(axis=2, keepdims=True)
         n_range = n_max - n_min
         norm    = (neighbor_scores - n_min) / np.where(n_range > 0, n_range, 1.0)
 
-        competent = norm >= th   # (batch, k, n_models)
-        resolved  = np.zeros(batch_size, dtype=bool)
-        weights   = np.zeros((batch_size, n_models))
+        # competent[b, i, j] = True if model j passes the threshold on neighbor i.
+        competent = norm >= th                         # (batch, k, n_models)
 
-        # Shrink from K down to 1. Stop early once all samples are resolved.
-        for curr_k in range(k, 0, -1):
-            if resolved.all():
-                break
+        # Inverse distance weights
+        inv_dist = 1.0 / np.maximum(distances, 1e-8)  # (batch, k)
 
-            # intersection[b, j] = True if model j is competent on all curr_k neighbors.
-            intersection    = competent[:, :curr_k, :].all(axis=1)   # (batch, n_models)
-            any_pass        = intersection.any(axis=1)                # (batch,)
-            newly_resolved  = any_pass & ~resolved
+        # Weighted votes
+        votes = (competent * inv_dist[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
+        total = votes.sum(axis=1, keepdims=True)
 
-            if newly_resolved.any():
-                counts = intersection[newly_resolved].sum(axis=1, keepdims=True)
-                weights[newly_resolved] = (
-                    intersection[newly_resolved].astype(float) / counts
-                )
-                resolved |= newly_resolved
-
-        # Fallback for samples where K=1 had no signal.
-        if not resolved.all():
-            weights[~resolved] = 1.0 / n_models
+        # Normalize to weights that sum to 1.
+        # Uniform fallback if no model earned any votes.
+        any_votes = total > 0
+        weights   = np.where(
+            any_votes,
+            votes / np.where(any_votes, total, 1.0),
+            np.full_like(votes, 1.0 / len(self.models)),
+        )
 
         if batch_size == 1:
             return dict(zip(self.models, weights[0]))

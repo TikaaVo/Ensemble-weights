@@ -19,7 +19,7 @@ pip install hnswlib
 ## Quickstart
 
 ```python
-from ensemble_weights.des.knndws import KNNDWS
+from despy.des.knndws import KNNDWS
 
 # 1. Train your models on training data however you like
 model_a.fit(X_train, y_train)
@@ -64,7 +64,7 @@ Import algorithm classes directly from their modules. All four share the same `f
 ### KNNDWS — K-Nearest Neighbors with Distance-Weighted Softmax
 
 ```python
-from ensemble_weights.des.knndws import KNNDWS
+from despy.des.knndws import KNNDWS
 ```
 
 The recommended default. Retrieves the K nearest validation neighbors for each test point, averages each model's local scores, normalizes to [0, 1] within the neighborhood, applies a competence gate, then weights models via softmax.
@@ -92,7 +92,7 @@ router = KNNDWS(
 ### OLA — Overall Local Accuracy
 
 ```python
-from ensemble_weights.des.ola import OLA
+from despy.des.ola import OLA
 ```
 
 Hard selection: assigns full weight to the single model with the highest average score across the K nearest neighbors. No blending. Useful as a strong baseline — if OLA and KNNDWS produce similar results, the pool lacks meaningful local diversity.
@@ -112,7 +112,7 @@ router = OLA(
 ### KNORAU — K-Nearest Oracles (Union)
 
 ```python
-from ensemble_weights.des.knorau import KNORAU
+from despy.des.knorau import KNORAU
 ```
 
 Counts how many of the K nearest neighbors each model is competent on. Weight is proportional to vote count (linear, not softmax). Models with zero votes are excluded.
@@ -135,7 +135,7 @@ router = KNORAU(
 ### KNORAE — K-Nearest Oracles (Eliminate)
 
 ```python
-from ensemble_weights.des.knorae import KNORAE
+from despy.des.knorae import KNORAE
 ```
 
 Finds the largest neighborhood in which at least one model is competent on **every** neighbor (the intersection). If no model passes at K, shrinks to K-1 and retries — down to K=1, which always resolves. Surviving models share equal weight.
@@ -164,7 +164,8 @@ Pass a metric name as a string, or import the function directly.
 router = KNNDWS(task='regression', metric='mae', mode='min')
 
 # Function (import directly)
-from ensemble_weights.metrics import mae
+from despy.metrics import mae
+
 router = KNNDWS(task='regression', metric=mae, mode='min')
 
 # Custom callable
@@ -196,7 +197,7 @@ For probability metrics, pass 2D arrays of shape `(n_samples, n_classes)` in `pr
 ## Classification example
 
 ```python
-from ensemble_weights.des.knndws import KNNDWS
+from despy.des.knndws import KNNDWS
 
 # Models must support predict_proba
 lr.fit(X_train, y_train)
@@ -208,7 +209,7 @@ router.fit(
     X_val,
     y_val,
     {
-        'lr':  lr.predict_proba(X_val),    # shape (n_val, n_classes)
+        'lr': lr.predict_proba(X_val),  # shape (n_val, n_classes)
         'knn': knn.predict_proba(X_val),
         'hgb': hgb.predict_proba(X_val),
     }
@@ -217,12 +218,13 @@ router.fit(
 # Blend probability arrays, then argmax for hard predictions
 weights = router.predict(X_test)
 test_probas = {
-    'lr':  lr.predict_proba(X_test),
+    'lr': lr.predict_proba(X_test),
     'knn': knn.predict_proba(X_test),
     'hgb': hgb.predict_proba(X_test),
 }
 
 import numpy as np
+
 blended = np.array([
     sum(w[name] * test_probas[name][i] for name in w)
     for i, w in enumerate(weights)
@@ -247,7 +249,8 @@ Presets configure the neighbor search backend. The right choice depends on valid
 
 ```python
 # Print all presets with full parameters
-from ensemble_weights import list_presets
+from despy import list_presets
+
 list_presets()
 ```
 
@@ -263,7 +266,7 @@ router = KNNDWS(
 ### Auto-select based on data size
 
 ```python
-from ensemble_weights import DynamicRouter
+from despy import DynamicRouter
 
 router = DynamicRouter.from_data_size(
     n_samples=50_000,
@@ -273,7 +276,7 @@ router = DynamicRouter.from_data_size(
     metric='mae',
     mode='min',
     k=20,
-    n_queries=4_000,   # optional: test set size, used to weigh ANN fit cost
+    n_queries=4_000,  # optional: test set size, used to weigh ANN fit cost
 )
 ```
 
@@ -284,7 +287,7 @@ router = DynamicRouter.from_data_size(
 For benchmarks, use `DynamicRouter` to select algorithms via string in a loop:
 
 ```python
-from ensemble_weights import DynamicRouter
+from despy import DynamicRouter
 
 for method in ['knn-dws', 'ola', 'knora-u', 'knora-e']:
     router = DynamicRouter(
