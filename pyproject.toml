@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "despys"
 version = "0.1.0"
 description = "Dynamic model weighting"
-authors = [{name = "Tikhon Vodyanov", email = "tikavod6@gmail.com"}]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
