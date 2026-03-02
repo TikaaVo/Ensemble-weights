@@ -39,7 +39,6 @@ Why threshold differs between algorithms and tasks
            uncompetitive models without being over-restrictive).
 
 Install:  pip install scikit-learn scipy faiss-cpu
-Runtime:  ~5-8 min on a MacBook Air M3
 """
 
 import contextlib
