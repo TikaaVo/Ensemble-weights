@@ -120,10 +120,7 @@ class DynamicRouter:
             x = add_batch_dim(to_numpy(x))
             x = self._feature_extractor(x)[0]
 
-        if self._method == 'knn-dws':
-            return self._des.predict(x, temperature=temperature, threshold=threshold)
-        else:
-            return self._des.predict(x, temperature=temperature, threshold=threshold)
+        return self._des.predict(x, temperature=temperature, threshold=threshold)
 
     # Class methods
 
