@@ -48,6 +48,7 @@ from ensemble_weights.des.knorae   import KNORAE
 from ensemble_weights.des.knoraiu import KNORAIU
 from ensemble_weights.router       import DynamicRouter
 from ensemble_weights._config      import SPEED_PRESETS, list_presets
+from ensemble_weights.analysis     import analyze
 
 __all__ = [
     'KNNDWS',
@@ -58,4 +59,5 @@ __all__ = [
     'DynamicRouter',
     'SPEED_PRESETS',
     'list_presets',
+    'analyze',
 ]
