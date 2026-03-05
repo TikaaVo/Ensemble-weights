@@ -56,7 +56,9 @@ NumPy (>= 1.21)
 
 ---
 
-## Quick start example
+## Quick start
+
+Full explanation of the algorithms, syntax, and parameters is available in the documentation.
 
 ```python
 from despy.des.knorau  import KNORAU
