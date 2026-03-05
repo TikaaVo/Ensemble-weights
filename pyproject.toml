@@ -25,7 +25,7 @@ dependencies = [
 
 [project.optional-dependencies]
 exact = ["scikit-learn>=1.0"]
-fast  = ["faiss-cpu>=1.7"]
+faiss  = ["faiss-cpu>=1.7"]
 hnsw  = ["hnswlib>=0.7"]
 annoy = ["annoy>=1.17"]
 all   = ["scikit-learn>=1.0", "faiss-cpu>=1.7", "hnswlib>=0.7", "annoy>=1.17"]
