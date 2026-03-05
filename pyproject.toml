@@ -21,13 +21,14 @@ classifiers = [
 ]
 dependencies = [
     "numpy>=1.21",
-    "scikit-learn>=1.0",
 ]
 
 [project.optional-dependencies]
-fast = ["faiss-cpu>=1.7"]
-hnsw = ["hnswlib>=0.7"]
-all  = ["faiss-cpu>=1.7", "hnswlib>=0.7"]
+exact = ["scikit-learn>=1.0"]
+fast  = ["faiss-cpu>=1.7"]
+hnsw  = ["hnswlib>=0.7"]
+annoy = ["annoy>=1.17"]
+all   = ["scikit-learn>=1.0", "faiss-cpu>=1.7", "hnswlib>=0.7", "annoy>=1.17"]
 
 [project.urls]
 Homepage = "https://github.com/TikaaVo/despy"
