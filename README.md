@@ -24,7 +24,7 @@ concept that there are regions of feature space where certain models perform par
 so every base model can be an expert in a different region.
 Only the most competent, or an ensemble of the most competent models is selected for the prediction.
 
-Through emperical studies, DES has been shown to perform best with small-sized, imbalanced, or 
+Through empirical studies, DES has been shown to perform best with small-sized, imbalanced, or 
 heterogeneous datasets, as well as non-stationary data (concept drift), models that haven't perfected a dataset, 
 and when used on an ensemble of models with differing architectures and perspectives.
 
@@ -56,7 +56,7 @@ NumPy (>= 1.21)
 
 ---
 
-## Quick start
+## Quick start example
 
 ```python
 from despy.des.knorau  import KNORAU
@@ -70,11 +70,11 @@ models = {"rf": rf, "xgb": xgb, "mlp": mlp}
 val_preds = {name: m.predict_proba(X_val) for name, m in models.items()}
 
 # 3. Fit the router
-router = KNORAU(task="classification", metric="log_loss", mode="min", k=20)
+router = KNORAU(task="classification", metric="Accuracy", mode="min", k=20)
 router.fit(X_val, y_val, val_preds)
 
 # 4. Route test samples
-test_preds = {name: m.predict(X_test) for name, m in models.items()}
+test_preds = {name: m.predict_proba(X_test) for name, m in models.items()}
 
 for i, x in enumerate(X_test):
     weights = router.predict(x, temperature=0.1)
