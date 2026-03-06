@@ -5,7 +5,7 @@ Dynamic Ensemble Selection -- Multi-Seed Benchmark
 Runs the full showcase across N random seeds and reports mean +/- std for
 every method on every dataset. This gives a much more reliable picture of
 relative performance than a single seed, especially on smaller datasets like
-Satimage where individual runs have high variance.
+Abalone and Diabetes where individual runs have high variance.
 
 Imports run_regression and run_classification from showcase.py, which must be
 in the same directory (or on PYTHONPATH). All algorithm settings (K, temperature,
@@ -13,13 +13,13 @@ thresholds) are read directly from showcase.py so the two files stay in sync.
 
 Usage
 -----
-  python benchmark.py              # 10 seeds, all 5 datasets
+  python benchmark.py              # 10 seeds, all 10 datasets
   python benchmark.py --seeds 30   # 30 seeds (more reliable)
   python benchmark.py --seeds 5 --verbose   # print each individual run too
 
 Runtime (MacBook Air M3, default 10 seeds)
-  ~30-50 min. Datasets are loaded once and reused across all seeds.
-  Use --seeds 5 for a quick ~15 min run.
+  ~60-90 min. Datasets are loaded once and reused across all seeds.
+  Use --seeds 5 for a quick ~30 min run.
 """
 
 import argparse
@@ -37,8 +37,8 @@ try:
     from showcase import (
         run_regression, run_classification,
         load_california, load_bike, load_abalone,
-        load_waveform, load_satimage,
-        load_digits_data, load_pendigits,
+        load_diabetes_data, load_concrete,
+        load_har, load_yeast, load_segment, load_vowel, load_waveform,
         W,
     )
 except ImportError:
@@ -49,7 +49,7 @@ except ImportError:
 
 # ── Configuration ─────────────────────────────────────────────────────
 
-DEFAULT_N_SEEDS = 10
+DEFAULT_N_SEEDS = 20
 
 
 def make_seeds(n):
@@ -59,13 +59,16 @@ def make_seeds(n):
 
 # Each entry: (loader, run_fn, extra_kwargs, label, metric_name, higher_is_better)
 DATASETS = [
-    (load_california,  run_regression,     {},        'California Housing', 'MAE',      False),
-    (load_bike,        run_regression,     {},        'Bike Sharing',       'MAE',      False),
-    (load_abalone,     run_regression,     {},        'Abalone',            'MAE',      False),
-    (load_waveform,    run_classification, {'k': 20}, 'Waveform',           'Accuracy', True),
-    (load_satimage,    run_classification, {'k': 20}, 'Satimage',           'Accuracy', True),
-    (load_digits_data, run_classification, {'k': 10}, 'MNIST Digits',       'Accuracy', True),
-    (load_pendigits,   run_classification, {'k': 20}, 'Pendigits',          'Accuracy', True),
+    (load_california,    run_regression,     {},        'California Housing', 'MAE',      False),
+    (load_bike,          run_regression,     {},        'Bike Sharing',       'MAE',      False),
+    (load_abalone,       run_regression,     {},        'Abalone',            'MAE',      False),
+    (load_diabetes_data, run_regression,     {},        'Diabetes',           'MAE',      False),
+    (load_concrete,      run_regression,     {},        'Concrete Strength',  'MAE',      False),
+    (load_har,           run_classification, {'k': 20}, 'HAR',                'Accuracy', True),
+    (load_yeast,         run_classification, {'k': 10}, 'Yeast',              'Accuracy', True),
+    (load_segment,       run_classification, {'k': 10}, 'Image Segment',      'Accuracy', True),
+    (load_vowel,         run_classification, {'k': 10}, 'Vowel',              'Accuracy', True),
+    (load_waveform,      run_classification, {'k': 10}, 'Waveform',           'Accuracy', True),
 ]
 
 
@@ -179,7 +182,6 @@ def print_summary(results, timing_fit, timing_pred, n_seeds):
 
         for method in methods:
             v_raw  = vals[method]
-            # Filter out None entries (e.g. DESlib failures on some seeds)
             valid  = v_raw[v_raw != np.array(None)].astype(float)
             n_ok   = len(valid)
             if n_ok == 0:
@@ -232,7 +234,7 @@ def print_summary(results, timing_fit, timing_pred, n_seeds):
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Multi-seed DES benchmark. Imports showcase_heavy.py and averages results over N seeds."
+        description="Multi-seed DES benchmark. Imports showcase.py and averages results over N seeds."
     )
     p.add_argument(
         '--seeds', type=int, default=DEFAULT_N_SEEDS,
@@ -253,8 +255,10 @@ if __name__ == '__main__':
     print(f"  Dynamic Ensemble Selection -- Multi-Seed Benchmark")
     print(f"{'━' * W}")
     print(f"  Seeds     : {args.seeds}  ({make_seeds(args.seeds)})")
-    print(f"  Datasets  : California Housing, Bike Sharing, Abalone  (regression)")
-    print(f"              Letter Recognition, Satimage  (classification)")
+    print(f"  Datasets  : California Housing, Bike Sharing, Abalone,")
+    print(f"              Diabetes, Concrete Strength  (regression)")
+    print(f"              HAR, Yeast, Image Segment, Vowel, Waveform  (classification)")
+    print(f"  Pool      : KNN · Decision Tree · SVR/SVM-RBF · Ridge/NB · Bayesian Ridge/LR")
     print(f"  Verbose   : {'yes' if args.verbose else 'no  (--verbose to enable per-run output)'}")
     print(f"{'━' * W}")
 

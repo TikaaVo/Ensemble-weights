@@ -28,6 +28,10 @@ Through empirical studies, DES has been shown to perform best with small-sized, 
 heterogeneous datasets, as well as non-stationary data (concept drift), models that haven't perfected a dataset, 
 and when used on an ensemble of models with differing architectures and perspectives.
 
+However, DES is not an automatic improvement. It tends to perform worse when datasets are homogeneous or have low diversity, 
+when the validation set isn't a good representation of the test set, when using very high dimensional data or few training samples,
+or when a single model dominates a dataset.
+
 ---
 
 ## Installation
@@ -175,47 +179,66 @@ Built-in metric strings: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_cor
 
 ## Benchmark results
 
-10-seed benchmark (seeds 0–9) on standard sklearn and OpenML datasets. "Best Single" is the best
+20-seed benchmark (seeds 0–19) on standard sklearn and OpenML datasets. "Best Single" is the best
 individual model selected on the validation set. "Simple Average" is uniform
 equal-weight blending, included as a baseline.
 
-Pool: KNN, Random Forest, Hist. Gradient Boosting, SVM-RBF (C=2), MLP.
+For more detailed benchmark numbers, see the [documentation](https://TikaaVo.github.io/despy/).
+
+Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
+
+This pool was selected for having variability in architectures while avoiding a single dominant model.
+
+despy algorithms tested: OLA, KNN-DWS, KNORA-U, KNORA-E, KNORA-IU.
 
 ### Regression (MAE, lower is better)
 
 % shown as delta vs Best Single. 10-seed mean.
 
-| Dataset | Best Single | Simple Avg | despy best |
-|---|---|---|---|
-| California Housing (sklearn) | 0.3370 | +2.0% | **−3.2%** (KNN-DWS) |
-| Bike Sharing (OpenML) | 31.02 | +32.8% | **−0.4%** (KNN-DWS) |
-| Abalone (OpenML) | 1.5479 | −1.5% | **−1.5%** (KNORA-U) |
+| Dataset                      | Best Single | Simple Avg | despy best            |
+|------------------------------|-----------|---|-----------------------|
+| California Housing (sklearn) | 0.3956    | +7.99% | **-2.24%** (KNN-DWS)  |
+| Bike Sharing (OpenML)        | 51.6779   | +47.77% | **-5.34%** (KNN-DWS)  |
+| Abalone (OpenML)             | **1.4981** | +1.14% | +1.47% (KNORA-U)      |
+| Diabetes (sklearn)           | **44.5042** | +3.18% | +1.17% (KNN-DWS)      |
+| Conrete Strength (OpenML)    | 5.2686 | +23.66% | **-1.05%** (KNORA-IU) |
 
-despy beats best single and simple averaging on every regression dataset across all 10 seeds.
-Simple Average performs poorly on Bike Sharing (+32.8%), because pool models specialise
-heavily by time-of-day pattern, so equal-weight blending is actively harmful.
+despy beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
+strong boost if used on the right dataset, but it might be counterproductive if used blindly.
 
 ### Classification (Accuracy, higher is better)
 
 % shown as delta vs Best Single. 10-seed mean.
 
-| Dataset | Best Single | Simple Avg | despy best              |
-|---|---|------------|-------------------------|
-| Waveform (OpenML) | 84.94% | +0.40%     | **+0.40%** (KNORA-U/IU) |
-| Satimage (OpenML) | 91.34% | **+0.15%** | **+0.15%** (KNORA-IU)   |
-| MNIST Digits (sklearn) | 96.83% | +0.66%     | **+0.83%** (KNORA-E)    |
-| Pendigits (OpenML) | 99.02% | +0.25%     | **+0.32%** (KNORA-E)    |
+| Dataset                | Best Single | Simple Avg | despy best            |
+|------------------------|-------------|--------|-----------------------|
+| HAR (OpenML)           | 98.24%      | -0.33% | **+0.14%** (KNN-DWS)  |
+| Yeast (OpenML)         | 58.87%      | +0.77% | **+1.66%** (KNORA-IU) |
+| Image Segment (OpenML) | 93.70%      | +1.40% | **+2.09%** (KNORA-IU) |
+| Waveform (OpenML)      | 89.95%      | -2.05% | **+0.93%** (KNORA-E)  |
+| Vowel (OpenML)         | **85.91%**  | -0.98% | -0.40% (KNN-DWS)      |
 
-despy beats or matches best single and simple averaging on every classification dataset across all 10 seeds.
+despy beats or matches best single and simple averaging on 4/5 classification datasets. As seen on regression, DES
+can improve or hurt performance, so it must be used wisely, but if used correctly it can show promising results.
 
-### Speed (mean ms fit + predict, 10 seeds)
+### Speed (mean ms fit + predict, 20 seeds, all tested algorithms combined)
 
-| Dataset | despy |
-|---|---|
-| Waveform | 9–12 ms |
-| Satimage | 11–15 ms |
-| MNIST Digits | 4–5 ms |
-| Pendigits | 19–23 ms |
+Consider that usually it is recommended to only use one algorithm at a time, this benchmark ran five of them at the
+same time, so with a single one runtime is expected to be about 5x faster. For this benchmark, `preset='balanced'` was used,
+so the backend was an ANN algorithm with FAISS IVF.
+
+| Dataset            | despy    |
+|--------------------|----------|
+| California Housing | 136.6 ms |
+| Bike Sharing       | 115.5 ms |
+| Abalone            | 28.5 ms  |
+| Diabetes           | 8.1 ms   |
+| Conrete Strength   | 9.4 ms   |
+| HAR                | 297.5 ms |
+| Yeast              | 16.3 ms  |
+| Image Segment      | 27.2 ms  |
+| Waveform           | 48.9 ms  |
+| Vowel              | 16.5 ms  |
 
 despy caches all model predictions on the validation set at fit time and reads
 from that matrix at inference.

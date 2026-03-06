@@ -2,9 +2,9 @@
 """
 despy Showcase
 ==============
-Benchmarks despy against DESlib and classical baselines across four task types:
-regression, tabular classification, image classification, and time-series
-classification.
+Benchmarks despy against DESlib and DESReg across regression and
+classification tasks using a deliberately diverse pool of weaker,
+more opinionated models.
 
 Why despy is framework-agnostic
   despy receives any numeric predictions — numpy arrays, PyTorch tensors, JAX
@@ -13,45 +13,50 @@ Why despy is framework-agnostic
   DESlib requires sklearn-compatible estimators (fit/predict/predict_proba API)
   and has no regression support.
 
-Regression datasets   (DESlib: N/A — regression not supported)
-  California Housing  20K samples, 8 features
-  Bike Sharing        17K samples, 8 features
-  Abalone             4.2K samples, 9 features (rings count)
+Pool design  (both tasks)
+  The key difference from the original benchmark is the pool. The original used
+  strong globally-competitive models (RF, HGB, Extra Trees, etc.) that stay
+  within a few percent of each other everywhere — leaving little for DES routing
+  to gain. This showcase uses deliberately diverse, more opinionated models where
+  each has a clearly different inductive bias and a clear failure mode. DES has
+  genuine signal to exploit.
 
-Tabular classification   (despy vs DESlib, direct head-to-head)
-  Letter Recognition  20K samples, 16 features, 26 classes
-  Pendigits           11K samples, 16 features, 10 classes (pen digit trajectories)
+  Regression pool
+    KNN (k=5)         — purely local; wins in dense low-noise regions,
+                         fails on sparse or high-dimensional spaces
+    Decision Tree     — axis-aligned splits; wins in piecewise-constant regions,
+                         fails near smooth or diagonal relationships
+    SVR (rbf)         — kernel margins; wins near smooth continuous boundaries,
+                         fails on large well-separated clusters
+    Ridge             — linear; wins on globally linear relationships,
+                         fails on any nonlinear structure
+    Bayesian Ridge    — probabilistic linear with automatic regularisation;
+                         wins on well-behaved Gaussian data
 
-Image classification   (features = raw pixels or CNN embeddings)
-  MNIST Digits        1797 samples, 64 features (8×8 pixel values), 10 classes
-  despy works with any feature extractor (PyTorch, JAX, Keras, custom).
-  DESlib works here too, but only with sklearn estimators.
+  Classification pool
+    KNN (k=5)         — purely local; wins in dense low-noise regions
+    Decision Tree     — axis-aligned rules; wins in piecewise-constant regions
+    Gaussian NB       — feature independence assumption; wins when features are
+                         roughly Gaussian and separable
+    SVM-RBF           — kernel margins; wins near tight decision boundaries
+    Logistic Reg      — linear; wins on linearly separable regions
 
-Time-series classification   (features = signal statistics or sequence embeddings)
-  EEG Eye State       15K samples, 14 EEG channel amplitudes, 2 classes
-  In production, replace raw amplitudes with tsfresh, catch22, or transformer
-  embeddings. despy is agnostic to how features were extracted.
+Regression datasets
+  California Housing  sklearn built-in,  20,640 samples,  8 features
+  Bike Sharing        OpenML 42712,      17,379 samples, 12 features
+  Abalone             OpenML 183,         4,177 samples,  9 features
+  Diabetes            sklearn built-in,     442 samples, 10 features
+  Concrete Strength   OpenML 4353,        1,030 samples,  8 features
 
-Models   (6 per task — diverse inductive biases, no internal scalers)
-  Regression     Ridge, KNN, Random Forest, Extra Trees, HGB, MLP
-  Classification Logistic Reg, KNN, Random Forest, Extra Trees, HGB, Naive Bayes
+Classification datasets   (despy vs DESlib, direct head-to-head)
+  HAR                 OpenML 1478,       10,299 samples, 561 features, 6 classes
+  Yeast               OpenML 181,         1,484 samples,   8 features, 10 classes
+  Image Segment       OpenML 36,          2,310 samples,  19 features,  7 classes
+  Vowel               OpenML 307,           990 samples,  10 features, 11 classes
+  Waveform            OpenML 60,          5,000 samples,  40 features,  3 classes
 
-Scaling strategy
-  All features are imputed and StandardScaled on training statistics before
-  model fitting. This removes the need for Pipeline-internal scalers and ensures
-  despy, DESlib, and all pool classifiers receive identical feature representations.
-
-DES metric choice
-  Regression     MAE, mode='min'
-  Classification log_loss, mode='min', with predict_proba() inputs
-
-KNORA threshold guidance
-  knn-dws  0.5 always
-  KNORA    1.0 for regression (strict oracle criterion)
-           0.5 for classification with log_loss
-
-Install:  pip install scikit-learn scipy faiss-cpu deslib
-Runtime:  ~20-30 min on a modern laptop
+Install:  pip install scikit-learn scipy faiss-cpu deslib DESReg
+Runtime:  ~30-50 min on a modern laptop
 """
 
 import contextlib
@@ -60,26 +65,23 @@ import time
 import warnings
 
 import numpy as np
-from sklearn.datasets import fetch_california_housing, fetch_openml, load_digits
-from sklearn.ensemble import (
-    ExtraTreesRegressor,
-    GradientBoostingClassifier, GradientBoostingRegressor,
-    HistGradientBoostingClassifier, HistGradientBoostingRegressor,
-    RandomForestClassifier, RandomForestRegressor,
-)
+from sklearn.datasets import fetch_california_housing, fetch_openml, load_diabetes
 from sklearn.impute import SimpleImputer
+from sklearn.linear_model import BayesianRidge, LogisticRegression, Ridge
 from sklearn.metrics import accuracy_score, mean_absolute_error
 from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.svm import SVC, SVR
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from despy.des.knndws   import KNNDWS
-from despy.des.ola      import OLA
-from despy.des.knorau   import KNORAU
-from despy.des.knorae   import KNORAE
+from despy.des.knndws  import KNNDWS
+from despy.des.ola     import OLA
+from despy.des.knorau  import KNORAU
+from despy.des.knorae  import KNORAE
 from despy.des.knoraiu import KNORAIU
-from despy.analysis     import analyze
 
 warnings.filterwarnings('ignore')
 
@@ -176,8 +178,11 @@ def banner():
                  if DESREG_AVAILABLE
                  else 'not installed (pip install DESReg) — skipping comparison')
     print(f"\n{'━' * W}")
-    print("  despy Showcase  —  Regression · Tabular · Images · Time Series")
+    print("  despy Showcase  —  Diverse Pool Benchmark")
     print(f"{'━' * W}")
+    print("  Regression pool:      KNN · Decision Tree · SVR · Ridge · Bayesian Ridge")
+    print("  Classification pool:  KNN · Decision Tree · Gaussian NB · SVM-RBF · Logistic Reg")
+    print()
     print("  Best Single       best val-set model applied to test set everywhere")
     print("  Simple Average    uniform equal-weight blend of all models (no tuning)")
     print("  despy             KNN-DWS · OLA · KNORA-U · KNORA-E · KNORA-IU")
@@ -230,7 +235,6 @@ def show_results_clf(rows, best_acc):
     print(f"  {'-'*48}  {'-'*9}  {'-'*9}")
     prev_section = None
     for name, acc in rows:
-        # Print a light divider before DESlib rows
         cur_section = 'deslib' if name.startswith('DESlib') else 'despy'
         if cur_section != prev_section and prev_section is not None:
             print(f"  {'·'*48}  {'·'*9}  {'·'*9}")
@@ -270,68 +274,59 @@ def preprocess(X_tr, X_val, X_test):
     return X_tr_s, X_val_s, X_test_s
 
 
-# ── Model builders (no internal scalers — preprocess() handles scaling) ────────
+# ── Model builders ─────────────────────────────────────────────────────────────
 
 def build_regressors(seed=SEED):
     """
-    5 regressors: all legitimately competitive, each with a distinct
-    inductive bias so DES has real competence regions to exploit.
-    No Ridge/linear models (globally dominated by tree methods on these
-    datasets) and no MLP (slow, rarely adds diversity on tabular data).
+    5 diverse regressors — analogues of the classification pool.
+    Each has a clearly different inductive bias and failure mode, giving DES
+    genuine competence regions to exploit.
 
-      RF             — bagging ensemble; strong, high-variance
-      Extra Trees    — more randomised than RF; lower within-pool correlation,
-                       often close to RF in accuracy
-      HGB            — modern gradient boosting; usually best globally
-      GBR            — older sklearn GBRT; different implementation to HGB,
-                       genuinely different predictions on the same sample
-      KNN-7          — purely local, instance-based; wins in dense low-noise
-                       regions where boosting overgeneralises
+      KNN (k=5)       — purely local; wins in dense low-noise regions,
+                         fails on sparse or high-dimensional spaces
+      Decision Tree   — axis-aligned splits; wins in piecewise-constant regions,
+                         fails near smooth or diagonal relationships
+      SVR (rbf)       — kernel margins; wins near smooth continuous boundaries,
+                         fails on large well-separated clusters
+      Ridge           — linear; wins on globally linear relationships,
+                         fails on any nonlinear structure
+      Bayesian Ridge  — probabilistic linear with automatic regularisation;
+                         wins on well-behaved Gaussian data
     """
     return {
-        'Random Forest':  RandomForestRegressor(
-                              n_estimators=100, random_state=seed, n_jobs=-1),
-        'Extra Trees':    ExtraTreesRegressor(
-                              n_estimators=100, random_state=seed, n_jobs=-1),
-        'Hist. Boosting': HistGradientBoostingRegressor(
-                              max_iter=200, learning_rate=0.05, max_depth=4,
-                              random_state=seed),
-        'GBR':            GradientBoostingRegressor(
-                              n_estimators=100, max_depth=3, learning_rate=0.1,
-                              random_state=seed),
-        'KNN-7':          KNeighborsRegressor(n_neighbors=7, n_jobs=-1),
+        'KNN':            KNeighborsRegressor(n_neighbors=5, n_jobs=-1),
+        'Decision Tree':  DecisionTreeRegressor(max_depth=8, random_state=seed),
+        'SVR':            SVR(kernel='rbf', C=1.0),
+        'Ridge':          Ridge(alpha=1.0),
+        'Bayesian Ridge': BayesianRidge(),
     }
+
 
 def build_classifiers(seed=SEED):
     """
-    4 classifiers: all genuinely competitive with each other (within ~4% on
-    most tabular benchmarks), each with a distinct inductive bias.
+    5 diverse classifiers — each with a clearly different inductive bias
+    and failure mode, giving DES real competence regions to exploit.
 
-    Removed:
-      Extra Trees    — consistently dominates, leaving nothing for DES to route
-      Logistic Reg   — too weak (~77% on Letter), pollutes competence estimates
-      Naive Bayes    — far too weak, same problem
-
-    Kept / added:
-      KNN            — purely local; wins in dense, low-noise regions
-      Random Forest  — bagging ensemble; strong but different from boosting
-      GBC            — sklearn's original GBRT; different implementation to HGB,
-                       different predictions on the same samples, similar strength
-      HGB            — modern fast boosting; usually the strongest globally
+      KNN (k=5)      — local geometry; wins in dense low-noise regions
+      Decision Tree  — axis-aligned rules; wins in piecewise-constant regions
+      Gaussian NB    — feature independence assumption; wins when features are
+                        roughly Gaussian and separable
+      SVM-RBF        — kernel margins; wins near tight decision boundaries
+      Logistic Reg   — linear; wins on linearly separable regions
     """
     return {
-        'KNN':            KNeighborsClassifier(n_neighbors=10, n_jobs=-1),
-        'Random Forest':  RandomForestClassifier(
-                              n_estimators=100, random_state=seed, n_jobs=-1),
-        'GBC':            GradientBoostingClassifier(
-                              n_estimators=100, max_depth=3, learning_rate=0.1,
-                              random_state=seed),
-        'Hist. Boosting': HistGradientBoostingClassifier(
-                              max_iter=200, learning_rate=0.05, max_depth=4,
-                              random_state=seed),
+        'KNN':           KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
+        'Decision Tree': DecisionTreeClassifier(max_depth=8, random_state=seed),
+        'Gaussian NB':   GaussianNB(),
+        'SVM-RBF':       SVC(C=1.0, kernel='rbf', probability=True,
+                             random_state=seed),
+        'Logistic Reg':  LogisticRegression(max_iter=1000, random_state=seed,
+                                            n_jobs=-1),
     }
 
+
 # ── Dataset loaders ────────────────────────────────────────────────────────────
+# Regression
 
 def load_california():
     print("  Loading California Housing...", end=' ', flush=True)
@@ -363,61 +358,127 @@ def load_abalone():
     return X, y, 'Abalone (Rings)', X.shape[1]
 
 
+def load_diabetes_data():
+    """
+    sklearn Diabetes dataset: 442 samples, 10 features (age, sex, BMI,
+    blood pressure, six serum measurements), continuous target is disease
+    progression one year after baseline. Small enough that competence regions
+    are meaningful — KNN wins on similar patient profiles, SVR wins near smooth
+    physiological boundaries, Ridge wins where the relationship is additive.
+    """
+    print("  Loading Diabetes (sklearn built-in)...", end=' ', flush=True)
+    X, y = load_diabetes(return_X_y=True)
+    print("done")
+    return X, y, 'Diabetes (sklearn)', X.shape[1]
+
+
+def load_concrete():
+    """
+    Concrete Compressive Strength (OpenML 4353): 1,030 samples, 8 features
+    (cement, blast furnace slag, fly ash, water, superplasticiser, coarse
+    aggregate, fine aggregate, age), target is compressive strength in MPa.
+    Nonlinear ingredient interactions create genuine competence regions —
+    Decision Tree wins on dominant ingredient splits, SVR wins near smooth
+    interaction boundaries, Ridge fails on the nonlinear age-cure relationship.
+    """
+    print("  Fetching Concrete Strength from OpenML...", end=' ', flush=True)
+    d = fetch_openml(data_id=4353, as_frame=True, parser='auto')
+    # If target is None, assume the last column is the target (strength)
+    if d.target is None:
+        X = d.data.iloc[:, :-1].astype(float).values
+        y = d.data.iloc[:, -1].astype(float).values
+    else:
+        X = d.data.astype(float).values
+        y = d.target.astype(float).values
+    print("done")
+    return X, y, 'Concrete Strength', X.shape[1]
+
+
+# Classification
+
+def load_har():
+    """
+    Human Activity Recognition (OpenML 1478): 10,299 samples of smartphone
+    sensor data (accelerometer + gyroscope), 561 features, 6 activity classes.
+    Static activities (sitting, standing, laying) occupy completely different
+    regions of feature space than dynamic ones (walking, running) — each model
+    family handles a different activity type.
+    """
+    print("  Fetching HAR from OpenML...", end=' ', flush=True)
+    ds = fetch_openml(data_id=1478, as_frame=True, parser='auto')
+    X  = ds.data.astype(float).values
+    y  = LabelEncoder().fit_transform(ds.target)
+    print("done")
+    return X, y, 'Human Activity Recognition (HAR)', X.shape[1], len(np.unique(y))
+
+
+def load_yeast():
+    """
+    Yeast protein localisation (OpenML 181): 1,484 samples, 8 features,
+    10 classes. Highly multiclass with class imbalance — some classes have
+    fewer than 30 samples. DES literature consistently shows gains on small
+    imbalanced multiclass problems where the global best model is pulled
+    toward majority classes.
+    """
+    print("  Fetching Yeast from OpenML...", end=' ', flush=True)
+    ds = fetch_openml(data_id=181, as_frame=True, parser='auto')
+    X  = ds.data.astype(float).values
+    y  = LabelEncoder().fit_transform(ds.target)
+    print("done")
+    return X, y, 'Yeast (Protein Localisation)', X.shape[1], len(np.unique(y))
+
+
+def load_segment():
+    """
+    Image Segment (OpenML 36): 2,310 samples of outdoor image segments,
+    19 features (colour, texture, shape statistics), 7 classes (sky, grass,
+    cement, window, brick, path, foliage). Different segment types produce
+    different feature distributions — natural competence regions for each
+    model family.
+    """
+    print("  Fetching Image Segment from OpenML...", end=' ', flush=True)
+    ds = fetch_openml(data_id=36, as_frame=True, parser='auto')
+    X  = ds.data.astype(float).values
+    y  = LabelEncoder().fit_transform(ds.target)
+    print("done")
+    return X, y, 'Image Segment', X.shape[1], len(np.unique(y))
+
+
+def load_vowel():
+    """
+    Vowel Recognition (OpenML 307): 990 samples, 10 features (LPC-derived
+    formant frequencies), 11 vowel classes. A canonical DES benchmark —
+    phonetically similar vowels overlap heavily in feature space, creating
+    genuine uncertainty regions where routing to the right specialist matters.
+    Speaker name column is metadata and dropped (non-numeric).
+    """
+    print("  Fetching Vowel from OpenML...", end=' ', flush=True)
+    ds = fetch_openml(data_id=307, as_frame=True, parser='auto')
+    X  = ds.data.select_dtypes(include='number').astype(float).values
+    y  = LabelEncoder().fit_transform(ds.target)
+    print("done")
+    return X, y, 'Vowel Recognition', X.shape[1], len(np.unique(y))
+
+
 def load_waveform():
     """
-    Waveform (v2): 5,000 samples, 40 features (21 wave attributes + 19 noise),
-    3 classes. Canonical DES benchmark: classes are noisy combinations of wave
-    shapes, so models genuinely specialise by waveform region and class overlap
-    is by construction. Oracle gain over best single is structurally guaranteed.
+    Waveform (OpenML 60 / waveform-5000): 5,000 samples, 40 features,
+    3 classes (three types of waveform generated by combining 2 of 3 base
+    waves). All features are continuous with Gaussian noise added. The
+    three classes overlap heavily in feature space — Bayes-optimal error
+    is ~14% — making this a classic benchmark for methods that benefit
+    from routing to local specialists rather than relying on a single
+    global boundary. SVM-RBF wins near tight decision boundaries, KNN
+    wins in dense low-noise pockets, and Logistic Reg wins in the
+    linearly-separable regions where one wave dominates.
     """
     print("  Fetching Waveform from OpenML...", end=' ', flush=True)
     ds = fetch_openml(data_id=60, as_frame=True, parser='auto')
     X  = ds.data.astype(float).values
     y  = LabelEncoder().fit_transform(ds.target)
     print("done")
-    return X, y, 'Waveform', X.shape[1], len(np.unique(y))
+    return X, y, 'Waveform (waveform-5000)', X.shape[1], len(np.unique(y))
 
-
-def load_satimage():
-    """
-    Statlog Satellite Image: 6,435 samples, 36 features (4 spectral bands
-    across a 3x3 pixel neighbourhood), 6 land-cover classes.
-    A canonical DES benchmark dataset — different classifiers specialise in
-    different spectral signatures (urban, vegetation, soil, water, etc.).
-    36 features gives KNN enough dimensions for stable competence estimates.
-    """
-    print("  Fetching Satimage from OpenML...", end=' ', flush=True)
-    ds = fetch_openml(data_id=182, as_frame=True, parser='auto')
-    X  = ds.data.astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
-    print("done")
-    return X, y, 'Satimage', X.shape[1], len(np.unique(y))
-
-def load_digits_data():
-    """
-    sklearn digits dataset: 8×8 grayscale images of handwritten digits 0–9.
-    X is raw pixel values (64 features) — a stand-in for CNN penultimate-layer
-    embeddings. In production, replace with outputs from any image model.
-    """
-    print("  Loading MNIST Digits (sklearn built-in)...", end=' ', flush=True)
-    d = load_digits()
-    print("done")
-    return d.data, d.target, 'MNIST Digits (sklearn)', d.data.shape[1], len(np.unique(d.target))
-
-
-def load_pendigits():
-    """
-    Pendigits: 10,992 samples of handwritten digit pen trajectories,
-    16 features (8 (x,y) coordinates sampled along the stroke), 10 classes.
-    Different from pixel-based MNIST — models specialise by stroke dynamics.
-    A confirmed DES benchmark in the literature with clean competence regions.
-    """
-    print("  Fetching Pendigits from OpenML...", end=' ', flush=True)
-    ds = fetch_openml(data_id=32, as_frame=True, parser='auto')
-    X  = ds.data.astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
-    print("done")
-    return X, y, 'Pendigits', X.shape[1], len(np.unique(y))
 
 # ── Router factory ─────────────────────────────────────────────────────────────
 
@@ -480,11 +541,7 @@ def des_predict_clf(router, X_test, test_probas, temperature, threshold):
 
 def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
     """
-    Run DESlib's KNORA-U, KNORA-E, and OLA on the same pool and scaled features.
-
-    The pool classifiers are already fitted on X_tr_s (globally scaled). DESlib
-    will call their predict_proba(X_val_s) internally, which is consistent since
-    the classifiers were trained on the same scale.
+    Run DESlib's 7 algorithms on the same pool and scaled features.
 
     Returns
     -------
@@ -497,9 +554,6 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
     fit_ms   = {}
     pred_ms  = {}
 
-    # 3 basic oracle algorithms + 4 more sophisticated methods.
-    # Running all 7 so the comparison is comprehensive rather than
-    # cherry-picked. Results shown as-is regardless of who wins.
     _dl_registry = [
         ('KNORA-U',  DL_KNORAU),
         ('KNORA-E',  DL_KNORAE),
@@ -509,25 +563,25 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
         ('DESP',     DL_DESP),
         ('DESKNN',   DL_DESKNN),
     ]
-    for label, cls in _dl_registry:
+    for dl_label, cls in _dl_registry:
         try:
             m = cls(pool_classifiers=pool, k=k)
             t0 = time.perf_counter()
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 m.fit(X_val_s, y_val)
-            fit_ms[label] = (time.perf_counter() - t0) * 1000
+            fit_ms[dl_label] = (time.perf_counter() - t0) * 1000
 
             t0 = time.perf_counter()
             y_pred = m.predict(X_test_s)
-            pred_ms[label] = (time.perf_counter() - t0) * 1000
+            pred_ms[dl_label] = (time.perf_counter() - t0) * 1000
 
-            results[label] = accuracy_score(y_test, y_pred)
+            results[dl_label] = accuracy_score(y_test, y_pred)
         except Exception as exc:
-            results[label] = None
-            fit_ms[label]  = float('nan')
-            pred_ms[label] = float('nan')
-            print(f"      ✗ DESlib {label} failed: {exc}")
+            results[dl_label] = None
+            fit_ms[dl_label]  = float('nan')
+            pred_ms[dl_label] = float('nan')
+            print(f"      ✗ DESlib {dl_label} failed: {exc}")
 
     return results, fit_ms, pred_ms
 
@@ -556,8 +610,6 @@ def _label_clf(method):
 
 # ── DESReg comparison ──────────────────────────────────────────────────────────
 
-# ── DESReg comparison ──────────────────────────────────────────────────────────
-
 def run_desreg(X_tv_s, y_tv, X_test_s, y_test, seed=SEED, k=K_REG, verbose=True):
     """
     Run DESReg on the same data budget as despy.
@@ -577,8 +629,6 @@ def run_desreg(X_tv_s, y_tv, X_test_s, y_test, seed=SEED, k=K_REG, verbose=True)
     pred_ms  : dict[str, float]
     """
     _print = print if verbose else lambda *a, **kw: None
-    # Same pool as despy -- all five models are fast to bag since none are
-    # nested ensembles. This makes the comparison purely about routing quality.
     regressors = list(build_regressors(seed=seed).values())
 
     results = {}
@@ -589,8 +639,8 @@ def run_desreg(X_tv_s, y_tv, X_test_s, y_test, seed=SEED, k=K_REG, verbose=True)
         try:
             m = _DESReg(
                 regressors_list   = regressors,
-                n_estimators_bag  = 2,        # minimum valid; two bags per regressor type
-                DSEL_perc         = 0.25,     # 25% of X_tv = ~20% of total
+                n_estimators_bag  = 2,
+                DSEL_perc         = 0.25,
                 XTRAIN_full       = True,
                 k                 = k,
                 ensemble_type     = mode,
@@ -616,6 +666,7 @@ def run_desreg(X_tv_s, y_tv, X_test_s, y_test, seed=SEED, k=K_REG, verbose=True)
 
     return results, fit_ms, pred_ms
 
+
 # ── Regression benchmark ───────────────────────────────────────────────────────
 
 def run_regression(loader, seed=SEED, verbose=True):
@@ -631,6 +682,8 @@ def run_regression(loader, seed=SEED, verbose=True):
     Returns
     -------
     dict[str, float]   method label → test MAE
+    dict               labelled fit times
+    dict               labelled predict times
     """
     _print = print if verbose else lambda *a, **kw: None
 
@@ -643,10 +696,8 @@ def run_regression(loader, seed=SEED, verbose=True):
     X_tr, X_val,  y_tr, y_val  = train_test_split(X_tv, y_tv, test_size=0.25, random_state=seed)
     X_tr_s, X_val_s, X_test_s  = preprocess(X_tr, X_val, X_test)
     # X_tv_s: train+val on training scaler — passed to DESReg for a fair data budget
-    from sklearn.pipeline import Pipeline as _Pipe
-    from sklearn.impute import SimpleImputer as _SI
-    from sklearn.preprocessing import StandardScaler as _SS
-    _prep_tv = _Pipe([('imp', _SI(strategy='median')), ('sc', _SS())])
+    _prep_tv = Pipeline([('imp', SimpleImputer(strategy='median')),
+                         ('sc',  StandardScaler())])
     X_tv_s   = _prep_tv.fit_transform(X_tv)
     _print(f"\n  Split -> {len(X_tr):,} train / {len(X_val):,} val / {len(X_test):,} test")
     if DESLIB_AVAILABLE and verbose:
@@ -671,7 +722,6 @@ def run_regression(loader, seed=SEED, verbose=True):
     ge_w = fit_global_ensemble_reg(val_preds, y_val)
     _print(f"    v Simple Average")
 
-
     fit_times, predict_times, des_preds = {}, {}, {}
     for method in DES_METHODS:
         th     = THRESHOLDS_REG[method]
@@ -686,11 +736,6 @@ def run_regression(loader, seed=SEED, verbose=True):
         _print(f"    v {label:<42}  fit: {fit_times[method]:6.2f}ms"
                f"  |  predict: {predict_times[method]:6.2f}ms")
 
-    # Suitability analysis -- uncomment to enable:
-    # if verbose:
-    #     analyze(X_val_s, y_val, val_preds, metric='mae', mode='min', k=K_REG)
-
-    # DESReg comparison
     dr_results, dr_fit_ms, dr_pred_ms = {}, {}, {}
     if DESREG_AVAILABLE:
         if verbose:
@@ -738,6 +783,8 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
     Returns
     -------
     dict[str, float | None]   method label → test accuracy
+    dict                      labelled fit times
+    dict                      labelled predict times
     """
     _print = print if verbose else lambda *a, **kw: None
 
@@ -762,10 +809,10 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
     for mname, model in models.items():
         t0 = time.time()
         model.fit(X_tr_s, y_tr)
-        val_probas[mname]      = model.predict_proba(X_val_s)
-        val_preds_hard[mname]  = model.predict(X_val_s)     # hard labels for KNORA
-        test_probas[mname]     = model.predict_proba(X_test_s)
-        val_accs[mname]        = accuracy_score(y_val, model.predict(X_val_s))
+        val_probas[mname]     = model.predict_proba(X_val_s)
+        val_preds_hard[mname] = model.predict(X_val_s)
+        test_probas[mname]    = model.predict_proba(X_test_s)
+        val_accs[mname]       = accuracy_score(y_val, model.predict(X_val_s))
         _print(f"    v {mname:<20}  Acc = {val_accs[mname]*100:.2f}%   ({time.time()-t0:.1f}s)")
 
     best_name = max(val_accs, key=val_accs.get)
@@ -775,15 +822,14 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
     ge_w = fit_global_ensemble_clf(val_probas, y_val)
     _print(f"    v Simple Average")
 
-
     fit_times, predict_times, des_probas = {}, {}, {}
     # KNORA algorithms use accuracy (0/1) on hard predictions — matching the
     # original algorithm definition and DESlib's behaviour. KNN-DWS and OLA
     # use log_loss on probabilities for richer continuous competence signals.
     _KNORA = {'knora-u', 'knora-e', 'knora-iu'}
     for method in DES_METHODS:
-        th     = THRESHOLDS_CLF[method]
-        label  = _label_clf(method)
+        th    = THRESHOLDS_CLF[method]
+        label = _label_clf(method)
         if method in _KNORA:
             router    = _make_router('classification', method, 'accuracy', 'max', k)
             fit_input = val_preds_hard
@@ -799,11 +845,10 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
         _print(f"    v {label:<42}  fit: {fit_times[method]:6.2f}ms"
                f"  |  predict: {predict_times[method]:6.2f}ms")
 
-    # DESlib comparison (same pool, same scaled features)
+    # DESlib comparison — always run so benchmark.py gets results even with verbose=False.
+    # Printing is gated on verbose separately.
     dl_results, dl_fit_ms, dl_pred_ms = {}, {}, {}
     if DESLIB_AVAILABLE:
-        # Always run DESlib so benchmark.py gets results even with verbose=False.
-        # Printing is gated on verbose separately.
         dl_results, dl_fit_ms, dl_pred_ms = run_deslib(
             models, X_val_s, y_val, X_test_s, y_test, k=k)
         if verbose:
@@ -815,10 +860,6 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
                 acc_str = f"{acc*100:.2f}%" if acc is not None else "N/A"
                 _print(f"    v DESlib {dl_label:<20}  acc: {acc_str:<8}"
                        f"  fit: {ft:6.2f}ms  |  predict: {pt:6.2f}ms")
-
-    # Suitability analysis -- uncomment to enable:
-    # if verbose:
-    #     analyze(X_val_s, y_val, val_probas, metric='log_loss', mode='min', k=k)
 
     best_acc = accuracy_score(y_test, models[best_name].predict(X_test_s))
     ge_acc   = accuracy_score(
@@ -839,11 +880,11 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
         show_results_clf(rows, best_acc)
         show_timing(DES_METHODS, fit_times, predict_times, len(X_test_s))
 
-    labelled_fit  = {_label_clf(m): fit_times[m]      for m in DES_METHODS}
-    labelled_pred = {_label_clf(m): predict_times[m]  for m in DES_METHODS}
+    labelled_fit  = {_label_clf(m): fit_times[m]     for m in DES_METHODS}
+    labelled_pred = {_label_clf(m): predict_times[m] for m in DES_METHODS}
     if DESLIB_AVAILABLE:
-        labelled_fit.update({f'DESlib {k}':  v for k, v in dl_fit_ms.items()})
-        labelled_pred.update({f'DESlib {k}': v for k, v in dl_pred_ms.items()})
+        labelled_fit.update({f'DESlib {dl}':  v for dl, v in dl_fit_ms.items()})
+        labelled_pred.update({f'DESlib {dl}': v for dl, v in dl_pred_ms.items()})
     return dict(rows), labelled_fit, labelled_pred
 
 
@@ -852,67 +893,23 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
 if __name__ == '__main__':
     banner()
 
-    # ── Regression ────────────────────────────────────────────────────────────
     print(f"\n{'━' * W}")
     print("  Regression  (despy vs DESReg — DESlib has no regression support)")
     print(f"{'━' * W}")
     run_regression(load_california)
     run_regression(load_bike)
     run_regression(load_abalone)
+    run_regression(load_diabetes_data)
+    run_regression(load_concrete)
 
-    # ── Tabular classification ─────────────────────────────────────────────────
     print(f"\n\n{'━' * W}")
-    print("  Tabular Classification  (despy vs DESlib — direct head-to-head)")
+    print("  Classification  (despy vs DESlib — direct head-to-head)")
     print(f"{'━' * W}")
-    run_classification(load_waveform, k=20)
-    run_classification(load_satimage, k=20)
-
-    # ── Image classification ───────────────────────────────────────────────────
-    print(f"\n\n{'━' * W}")
-    print("  Image Classification  (feature extractor → any model → despy)")
-    print(f"{'━' * W}")
-    print("  Pipeline: images → feature extractor → pool of models → despy routing")
-    print("  Feature extractor here: raw 8×8 pixel values (64D).")
-    print("  In production: penultimate-layer CNN embeddings from PyTorch / JAX /")
-    print("  Keras. despy receives the same numeric arrays regardless of framework.")
-    print("  DESlib works here too with sklearn models, but cannot directly accept")
-    print("  outputs from non-sklearn neural networks without a wrapper.")
-    run_classification(
-        load_digits_data, k=10,
-        note=(
-            "Raw pixel values used as features. Swap in CNN embeddings from any "
-            "framework to apply despy to full-resolution image datasets."
-        ),
-    )
-
-    # ── Time-series classification ─────────────────────────────────────────────
-    print(f"\n\n{'━' * W}")
-    print("  Time-Series Classification  (feature extractor → any model → despy)")
-    print(f"{'━' * W}")
-    print("  Pipeline: time series → feature extractor → pool of models → despy routing")
-    print("  Feature extractor here: 16 (x,y) pen stroke coordinates (Pendigits).")
-    print("  In production: tsfresh features, catch22, or transformer sequence")
-    print("  embeddings. despy is agnostic to the extractor and model framework.")
-    run_classification(
-        load_pendigits, k=20,
-        note=(
-            "Pen stroke trajectories: 16 (x,y) coordinates sampled along each "
-            "stroke. Swap in any feature extractor (CNNs, RNNs, transformers) "
-            "for full sequence data — despy receives the same arrays regardless."
-        ),
-    )
-    if DESLIB_AVAILABLE:
-        print()
-        print("  ── DESlib vs despy  ─────────────────────────────────────────────────────")
-        print("  DESlib: 7 algorithms (3 basic + 4 advanced). Results shown as-is.")
-        print()
-        print("  Waveform: despy KNORA-U/IU beat DESlib's best KNORA-U across 10")
-        print("  seeds — the canonical DES benchmark confirms routing over cached")
-        print("  predictions has a structural advantage on overlapping class boundaries.")
-        print()
-        print("  Speed: despy 5-65ms total (fit+predict) across all datasets.")
-        print("  DESlib: 130-1400ms. despy routes over cached predictions;")
-        print("  DESlib re-queries every model per neighbour at inference time.")
+    run_classification(load_har,      k=20)
+    run_classification(load_yeast,    k=10)
+    run_classification(load_segment,  k=10)
+    run_classification(load_vowel,    k=10)
+    run_classification(load_waveform, k=10)
 
     print(f"\n\n{'━' * W}")
     print("  Done.")
