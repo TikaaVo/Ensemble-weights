@@ -183,7 +183,8 @@ Built-in metric strings: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_cor
 individual model selected on the validation set. "Simple Average" is uniform
 equal-weight blending, included as a baseline.
 
-For more detailed benchmark numbers, see the [documentation](https://TikaaVo.github.io/despy/).
+For a more detailed benchmark breakdown, see the [documentation](https://TikaaVo.github.io/despy/).
+To see the full results, see `results.txt` in the `tests` folder.
 
 Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
