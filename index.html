@@ -836,7 +836,8 @@ and when used on an ensemble of models with differing architectures and perspect
 <p>deskit implements five DES algorithms. Each algorithm page covers how it works, when to use it,
 and all accepted parameters.</p>
 <ul>
-<li><a href="algorithms/knndws/">KNN-DWS</a> — soft blending via distance-weighted softmax. General recommendation for regression.</li>
+<li><a href="algorithms/knndws/">KNN-DWS</a> — soft blending via distance-weighted softmax. </li>
+<li><a href="algorithms/knndwsi/">KNN-DWS-I</a> — Like KNN-DWS but scores are inverse-distance weighted. General recommendation for regression.</li>
 <li><a href="algorithms/knorau/">KNORA-U</a> — vote-count weighting. Safe default for classification.</li>
 <li><a href="algorithms/knorae/">KNORA-E</a> — intersection-based. Best when models have clear regional dominance.</li>
 <li><a href="algorithms/knoraiu/">KNORA-IU</a> — like KNORA-U with inverse-distance weighted votes.</li>
