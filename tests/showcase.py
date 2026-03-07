@@ -78,6 +78,7 @@ from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from deskit.des.knndws  import KNNDWS
+from deskit.des.knndwsi import KNNDWSI
 from deskit.des.ola     import OLA
 from deskit.des.knorau  import KNORAU
 from deskit.des.knorae  import KNORAE
@@ -137,28 +138,31 @@ TEMP_REG = 0.1
 TEMP_CLF = 1.0
 
 THRESHOLDS_REG = {
-    'knn-dws':  0.5,
-    'ola':      0.5,
-    'knora-u':  1.0,
-    'knora-e':  1.0,
-    'knora-iu': 1.0,
+    'knn-dws':   0.5,
+    'knn-dws-i': 0.5,
+    'ola':       0.5,
+    'knora-u':   1.0,
+    'knora-e':   1.0,
+    'knora-iu':  1.0,
 }
 THRESHOLDS_CLF = {
-    'knn-dws':  0.5,
-    'ola':      0.5,
-    'knora-u':  0.5,
-    'knora-e':  0.5,
-    'knora-iu': 0.5,
+    'knn-dws':   0.5,
+    'knn-dws-i': 0.5,
+    'ola':       0.5,
+    'knora-u':   0.5,
+    'knora-e':   0.5,
+    'knora-iu':  0.5,
 }
 
-DES_METHODS = ['knn-dws', 'ola', 'knora-u', 'knora-e', 'knora-iu']
+DES_METHODS = ['knn-dws', 'knn-dws-i', 'ola', 'knora-u', 'knora-e', 'knora-iu']
 
 _DES_CLASSES = {
-    'knn-dws':  KNNDWS,
-    'ola':      OLA,
-    'knora-u':  KNORAU,
-    'knora-e':  KNORAE,
-    'knora-iu': KNORAIU,
+    'knn-dws':   KNNDWS,
+    'knn-dws-i': KNNDWSI,
+    'ola':       OLA,
+    'knora-u':   KNORAU,
+    'knora-e':   KNORAE,
+    'knora-iu':  KNORAIU,
 }
 
 # DESlib algorithms run in the comparison (7 total: 3 basic + 4 advanced)
@@ -185,7 +189,7 @@ def banner():
     print()
     print("  Best Single       best val-set model applied to test set everywhere")
     print("  Simple Average    uniform equal-weight blend of all models (no tuning)")
-    print("  deskit             KNN-DWS · OLA · KNORA-U · KNORA-E · KNORA-IU")
+    print("  deskit             KNN-DWS · KNN-DWS-I · OLA · KNORA-U · KNORA-E · KNORA-IU")
     print(f"  DESlib            {dl_status}")
     print(f"  DESReg            {dr_status}")
     print()
@@ -590,21 +594,23 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
 
 def _label_reg(method):
     return {
-        'knn-dws':  f'deskit KNN-DWS  (gate={THRESHOLDS_REG["knn-dws"]}, T={TEMP_REG})',
-        'ola':       'deskit OLA',
-        'knora-u':  f'deskit KNORA-U   (th={THRESHOLDS_REG["knora-u"]})',
-        'knora-e':  f'deskit KNORA-E   (th={THRESHOLDS_REG["knora-e"]})',
-        'knora-iu': f'deskit KNORA-IU  (th={THRESHOLDS_REG["knora-iu"]})',
+        'knn-dws':   f'deskit KNN-DWS    (gate={THRESHOLDS_REG["knn-dws"]}, T={TEMP_REG})',
+        'knn-dws-i': f'deskit KNN-DWS-I  (gate={THRESHOLDS_REG["knn-dws-i"]}, T={TEMP_REG})',
+        'ola':        'deskit OLA',
+        'knora-u':   f'deskit KNORA-U    (th={THRESHOLDS_REG["knora-u"]})',
+        'knora-e':   f'deskit KNORA-E    (th={THRESHOLDS_REG["knora-e"]})',
+        'knora-iu':  f'deskit KNORA-IU   (th={THRESHOLDS_REG["knora-iu"]})',
     }[method]
 
 
 def _label_clf(method):
     return {
-        'knn-dws':  f'deskit KNN-DWS  (gate={THRESHOLDS_CLF["knn-dws"]}, T={TEMP_CLF})',
-        'ola':       'deskit OLA',
-        'knora-u':  f'deskit KNORA-U   (th={THRESHOLDS_CLF["knora-u"]})',
-        'knora-e':  f'deskit KNORA-E   (th={THRESHOLDS_CLF["knora-e"]})',
-        'knora-iu': f'deskit KNORA-IU  (th={THRESHOLDS_CLF["knora-iu"]})',
+        'knn-dws':   f'deskit KNN-DWS    (gate={THRESHOLDS_CLF["knn-dws"]}, T={TEMP_CLF})',
+        'knn-dws-i': f'deskit KNN-DWS-I  (gate={THRESHOLDS_CLF["knn-dws-i"]}, T={TEMP_CLF})',
+        'ola':        'deskit OLA',
+        'knora-u':   f'deskit KNORA-U    (th={THRESHOLDS_CLF["knora-u"]})',
+        'knora-e':   f'deskit KNORA-E    (th={THRESHOLDS_CLF["knora-e"]})',
+        'knora-iu':  f'deskit KNORA-IU   (th={THRESHOLDS_CLF["knora-iu"]})',
     }[method]
 
 

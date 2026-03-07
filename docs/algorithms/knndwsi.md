@@ -1,0 +1,69 @@
+# KNN-DWS-I
+
+This algorithm is designed to be consistent and flexible for both classification and
+regression tasks and is a variation of KNN-DWS that takes neighbor distance into consideration.
+It uses soft blending between the top experts in a certain competence region to compute a set of weights for the models.
+
+---
+
+## When to use
+
+- KNN-DWS-I is currently the general recommendation for regression tasks. It works for classification with confidence scores, 
+but not as well with hard predictions
+- It performs best when the competence regions and pool are smooth and heterogeneous
+- It performs worst for homogeneous datasets and for classification with hard predictions
+
+---
+
+## How it works
+
+When `fit` is called, KNN-DWS-I fits a KNN algorithm on the validation data and builds a criterion score matrix. 
+When `predict` is called, it finds the K nearest neighbors from the test point and uses the score matrix to combine
+every models' scores over the K neighbors with inverse-distance weights. Afterwards, it normalizes the average scores 
+using min-max normalization and removes the models under a threshold. Finally, it takes the remaining models 
+and creates weights with their scores using softmax with temperature.
+
+---
+
+## Parameters
+
+| Parameter     | Type | Default                               | Description                                                                                                                                                     |
+|---------------|---|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `task`        | str | —                                     | `"classification"` or `"regression"`                                                                                                                            |
+| `metric`      | str or callable | —                                     | Scoring function per sample. Built-ins: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_correct`. Custom callables `(y_true, y_pred) -> float` are accepted |
+| `mode`        | str | —                                     | `"max"` if higher is better, `"min"` if lower                                                                                                                   |
+| `k`           | int | 10                                    | Number of neighbours                                                                                                                                            |
+| `threshold`   | float | 0.5                                   | Competence cutoff                                                                                                                                               |
+| `temperature` | float | 0.1/1.0 for regression/classification | Defines how smooth the model blend is                                                                                                                           |
+| `preset`      | str | `"balanced"`                          | ANN backend preset                                                                                                                                              |
+| `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
+
+---
+
+## Example
+```python
+# Regression
+from deskit.des.knndswi import KNNDWSI
+
+router = KNNDWSI(task="regression", metric="mae", mode="min", k=20)
+router.fit(X_val, y_val, val_preds)
+weights = router.predict(x)
+```
+
+```python
+# Classification
+from deskit.des.knndswi import KNNDWSI
+
+router = KNNDWSI(task="classification", metric="log_loss", mode="min", k=20)
+router.fit(X_val, y_val, val_preds)
+weights = router.predict(x)
+```
+
+---
+
+## Notes
+
+A lower temperature is recommended for regression because regression metrics tend to produce scores on a 
+continuous scale where differences can be large, so a low temperature sharpens the softmax to reflect that. 
+In contrast, classification metrics tend to produce scores that are closer together, so a higher temperature
+keeps the blend soft.

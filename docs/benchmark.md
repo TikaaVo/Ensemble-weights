@@ -1,6 +1,6 @@
 # Benchmark
 
-All results are from a 20-seed benchmark (seeds 0–19) on standard datasets. Each seed
+All results are from a 100-seed benchmark (seeds 0–99) on standard datasets. Each seed
 produces a different random train/validation/test split, and results are averaged across
 all 20 seeds to reduce variance from any single split.
 
@@ -95,15 +95,15 @@ overlap.
 
 ## Regression results
 
-MAE, lower is better. % shown as delta vs Best Single. 20-seed mean ± std.
+MAE, lower is better. % shown as delta vs Best Single. 100-seed mean ± std.
 
-| Dataset | Best Single        | Simple Avg | KNN-DWS | OLA | KNORA-U | KNORA-E | KNORA-IU |
-|---|--------------------|---|---|---|---|---|---|
-| California Housing | 0.3956 ± 0.008     | +7.99% | **−2.24%** | −0.03% | −0.79% | +7.46% | −0.99% |
-| Bike Sharing | 51.678 ± 0.860     | +47.77% | **−5.34%** | −2.97% | +6.57% | +14.79% | +5.39% |
-| Abalone | **1.4981 ± 0.044** | +1.14% | +2.68% | +3.67% | +1.47% | +7.18% | +1.47% |
-| Diabetes | **44.504 ± 2.645** | +3.18% | +1.17% | +3.56% | +5.86% | +15.34% | +5.74% |
-| Concrete Strength | 5.2686 ± 0.336     | +23.66% | +1.68% | +3.54% | +2.49% | +11.84% | **−1.05%** |
+| Dataset | Best Single        | Simple Avg | KNN-DWS | KNN-DWS-I | OLA | KNORA-U | KNORA-E | KNORA-IU |
+|---|--------------------|---|---|---|---|---|---|---|
+| California Housing | 0.3955 ± 0.008     | +7.93% | −2.41% | **−2.68%** | −0.31% | −0.81% | +7.22% | −1.03% |
+| Bike Sharing | 51.604 ± 1.291     | +48.39% | −4.90% | **−6.25%** | −2.55% | +6.67% | +15.16% | +5.50% |
+| Abalone | **1.4923 ± 0.054** | +1.29% | +3.00% | +3.12% | +4.02% | +1.63% | +7.60% | +1.61% |
+| Diabetes | **44.986 ± 3.370** | +2.98% | +0.96% | +0.88% | +3.16% | +5.13% | +14.36% | +5.02% |
+| Concrete Strength | 5.3934 ± 0.400     | +21.30% | +1.40% | −1.55% | +3.94% | +0.46% | +11.29% | **−2.85%** |
 
 ---
 
@@ -114,7 +114,7 @@ and classification-like (like in Abalone).
 
 ## Classification results
 
-Accuracy, higher is better. % shown as delta vs Best Single. 20-seed mean ± std.
+Accuracy, higher is better. % shown as delta vs Best Single. 100-seed mean ± std.
 Classification datasets include a comparison against [DESlib](https://github.com/scikit-learn-contrib/DESlib),
 a mature sklearn-compatible DES library.
 
@@ -122,112 +122,117 @@ a mature sklearn-compatible DES library.
 
 | Method | Mean | Std | vs Best Single |
 |---|---|---|---|
-| Best Single | 98.24% | 0.23% | — |
-| Simple Average | 97.92% | 0.26% | −0.33% |
-| deskit KNN-DWS | **98.38%** | 0.27% | **+0.14%** |
-| deskit OLA | 98.00% | 0.41% | −0.25% |
-| deskit KNORA-U | 98.18% | 0.29% | −0.06% |
-| deskit KNORA-E | 98.02% | 0.27% | −0.22% |
-| deskit KNORA-IU | 98.19% | 0.29% | −0.05% |
-| DESlib KNORA-U | 98.00% | 0.26% | −0.25% |
-| DESlib KNORA-E | 97.82% | 0.34% | −0.43% |
-| DESlib OLA | 97.09% | 0.48% | −1.17% |
-| DESlib META-DES | 98.35% | 0.30% | +0.11% |
-| DESlib KNOP | 98.33% | 0.29% | +0.09% |
-| DESlib DESP | 97.97% | 0.27% | −0.28% |
-| DESlib DESKNN | 97.81% | 0.33% | −0.44% |
+| Best Single | 98.24% | 0.25% | — |
+| Simple Average | 97.93% | 0.33% | −0.32% |
+| deskit KNN-DWS | 98.37% | 0.27% | +0.13% |
+| deskit KNN-DWS-I | **98.37%** | 0.27% | **+0.14%** |
+| deskit OLA | 97.99% | 0.31% | −0.25% |
+| deskit KNORA-U | 98.18% | 0.29% | −0.05% |
+| deskit KNORA-E | 97.99% | 0.31% | −0.25% |
+| deskit KNORA-IU | 98.19% | 0.29% | −0.04% |
+| DESlib KNORA-U | 98.04% | 0.32% | −0.20% |
+| DESlib KNORA-E | 97.83% | 0.34% | −0.41% |
+| DESlib OLA | 97.05% | 0.44% | −1.20% |
+| DESlib META-DES | **98.37%** | 0.31% | **+0.14%** |
+| DESlib KNOP | 98.32% | 0.30% | +0.08% |
+| DESlib DESP | 97.98% | 0.33% | −0.26% |
+| DESlib DESKNN | 97.81% | 0.33% | −0.43% |
 
-deskit achieves a best mean score of 98.38%; DESlib achieves a best mean score of 98.35%.
+deskit achieves a best mean score of 98.37%; DESlib achieves a best mean score of 98.37%.
 
 ### Yeast
 
 | Method | Mean | Std | vs Best Single |
 |---|---|---|---|
-| Best Single | 58.87% | 2.20% | — |
-| Simple Average | 59.33% | 1.96% | +0.77% |
-| deskit KNN-DWS | 59.46% | 1.94% | +1.00% |
-| deskit OLA | 58.16% | 1.94% | −1.20% |
-| deskit KNORA-U | 59.68% | 1.91% | +1.37% |
-| deskit KNORA-E | 56.82% | 2.37% | −3.49% |
-| deskit KNORA-IU | **59.85%** | 1.90% | **+1.66%** |
-| DESlib KNORA-U | 59.48% | 1.81% | +1.03% |
-| DESlib KNORA-E | 56.97% | 1.91% | −3.23% |
-| DESlib OLA | 56.84% | 2.13% | −3.46% |
-| DESlib META-DES | 57.46% | 2.35% | −2.40% |
-| DESlib KNOP | 59.12% | 1.81% | +0.43% |
-| DESlib DESP | 58.77% | 1.72% | −0.17% |
-| DESlib DESKNN | 57.93% | 1.74% | −1.60% |
+| Best Single | 59.19% | 2.70% | — |
+| Simple Average | 59.46% | 2.44% | +0.46% |
+| deskit KNN-DWS | 59.89% | 2.42% | +1.18% |
+| deskit KNN-DWS-I | 59.91% | 2.51% | +1.23% |
+| deskit OLA | 58.93% | 2.37% | −0.44% |
+| deskit KNORA-U | 59.89% | 2.53% | +1.18% |
+| deskit KNORA-E | 57.05% | 2.63% | −3.61% |
+| deskit KNORA-IU | **60.06%** | 2.53% | **+1.48%** |
+| DESlib KNORA-U | 59.91% | 2.32% | +1.22% |
+| DESlib KNORA-E | 57.64% | 2.49% | −2.61% |
+| DESlib OLA | 57.46% | 2.44% | −2.91% |
+| DESlib META-DES | 58.28% | 2.61% | −1.52% |
+| DESlib KNOP | 59.88% | 2.40% | +1.17% |
+| DESlib DESP | 59.48% | 2.23% | +0.50% |
+| DESlib DESKNN | 58.19% | 2.11% | −1.69% |
 
-deskit achieves a best mean score of 59.85%; DESlib achieves a best mean score of 59.48%.
+deskit achieves a best mean score of 60.06%; DESlib achieves a best mean score of 59.91%.
 
 ### Image Segment
 
 | Method | Mean | Std | vs Best Single |
 |---|---|---|---|
-| Best Single | 93.70% | 0.98% | — |
-| Simple Average | 95.01% | 1.03% | +1.40% |
-| deskit KNN-DWS | 95.58% | 0.86% | +2.01% |
-| deskit OLA | 94.98% | 0.92% | +1.36% |
-| deskit KNORA-U | 95.37% | 0.92% | +1.78% |
-| deskit KNORA-E | 95.41% | 1.01% | +1.82% |
-| deskit KNORA-IU | **95.66%** | 0.89% | **+2.09%** |
-| DESlib KNORA-U | 94.95% | 0.97% | +1.33% |
-| DESlib KNORA-E | 95.25% | 0.89% | +1.65% |
-| DESlib OLA | 94.65% | 0.89% | +1.02% |
-| DESlib META-DES | 95.48% | 0.81% | +1.89% |
-| DESlib KNOP | 95.19% | 1.00% | +1.59% |
-| DESlib DESP | 94.68% | 0.91% | +1.04% |
-| DESlib DESKNN | 94.76% | 1.00% | +1.13% |
+| Best Single | 93.65% | 1.11% | — |
+| Simple Average | 95.24% | 1.04% | +1.70% |
+| deskit KNN-DWS | 95.56% | 0.94% | +2.04% |
+| deskit KNN-DWS-I | 95.71% | 0.96% | +2.20% |
+| deskit OLA | 94.96% | 0.89% | +1.39% |
+| deskit KNORA-U | 95.60% | 1.02% | +2.08% |
+| deskit KNORA-E | 95.66% | 0.95% | +2.14% |
+| deskit KNORA-IU | **95.84%** | 0.98% | **+2.33%** |
+| DESlib KNORA-U | 95.10% | 1.05% | +1.54% |
+| DESlib KNORA-E | 95.45% | 0.89% | +1.91% |
+| DESlib OLA | 94.96% | 0.95% | +1.40% |
+| DESlib META-DES | 95.61% | 0.91% | +2.09% |
+| DESlib KNOP | 95.34% | 0.96% | +1.80% |
+| DESlib DESP | 94.89% | 1.05% | +1.32% |
+| DESlib DESKNN | 94.82% | 0.98% | +1.25% |
 
-deskit achieves a best mean score of 95.66%; DESlib achieves a best mean score of 95.48%.
+deskit achieves a best mean score of 95.84%; DESlib achieves a best mean score of 95.61%.
 
 ### Vowel
 
 | Method | Mean | Std | vs Best Single |
 |---|---|---|---|
-| Best Single | 89.95% | 2.94% | — |
-| Simple Average | 88.11% | 2.98% | −2.05% |
-| deskit KNN-DWS | 89.87% | 2.51% | −0.08% |
-| deskit OLA | 90.23% | 2.45% | +0.31% |
-| deskit KNORA-U | 90.15% | 2.49% | +0.22% |
-| deskit KNORA-E | 90.61% | 2.29% | +0.73% |
-| deskit KNORA-IU | **90.78%** | 2.14% | **+0.93%** |
-| DESlib KNORA-U | 88.18% | 2.58% | −1.97% |
-| DESlib KNORA-E | 89.47% | 2.45% | −0.53% |
-| DESlib OLA | 88.38% | 2.96% | −1.74% |
-| DESlib META-DES | 89.70% | 2.27% | −0.28% |
-| DESlib KNOP | 88.61% | 2.58% | −1.49% |
-| DESlib DESP | 85.56% | 2.99% | −4.88% |
-| DESlib DESKNN | 85.23% | 3.60% | −5.25% |
+| Best Single | 90.54% | 2.17% | — |
+| Simple Average | 88.90% | 2.40% | −1.81% |
+| deskit KNN-DWS | 90.13% | 2.27% | −0.46% |
+| deskit KNN-DWS-I | 90.48% | 2.26% | −0.07% |
+| deskit OLA | 90.36% | 2.32% | −0.20% |
+| deskit KNORA-U | 90.76% | 2.16% | +0.25% |
+| deskit KNORA-E | 90.92% | 2.12% | +0.42% |
+| deskit KNORA-IU | **91.38%** | 2.05% | **+0.93%** |
+| DESlib KNORA-U | 88.76% | 2.31% | −1.96% |
+| DESlib KNORA-E | 89.69% | 2.11% | −0.94% |
+| DESlib OLA | 88.30% | 2.71% | −2.48% |
+| DESlib META-DES | 90.09% | 2.16% | −0.50% |
+| DESlib KNOP | 89.27% | 2.30% | −1.40% |
+| DESlib DESP | 86.13% | 2.52% | −4.88% |
+| DESlib DESKNN | 85.37% | 2.94% | −5.71% |
 
-deskit achieves a best mean score of 90.78%; DESlib achieves a best mean score of 89.70%.
+deskit achieves a best mean score of 91.38%; DESlib achieves a best mean score of 90.09%.
 
 ### Waveform
 
 | Method | Mean | Std | vs Best Single |
 |---|---|---|---|
-| Best Single | 85.91% | 0.76% | — |
-| Simple Average | 85.07% | 0.76% | −0.98% |
-| deskit KNN-DWS | 85.57% | 0.79% | −0.40% |
-| deskit OLA | 84.15% | 0.89% | −2.04% |
-| deskit KNORA-U | 85.41% | 0.80% | −0.59% |
-| deskit KNORA-E | 82.91% | 1.12% | −3.50% |
-| deskit KNORA-IU | 85.42% | 0.78% | −0.58% |
-| DESlib KNORA-U | 85.61% | 0.82% | −0.35% |
-| DESlib KNORA-E | 83.19% | 1.02% | −3.17% |
-| DESlib OLA | 81.14% | 1.15% | −5.55% |
-| DESlib META-DES | 85.19% | 0.91% | −0.84% |
-| DESlib KNOP | **85.97%** | 0.97% | **+0.07%** |
-| DESlib DESP | 85.50% | 0.82% | −0.47% |
-| DESlib DESKNN | 84.39% | 0.95% | −1.78% |
+| Best Single | **86.28%** | 1.10% | — |
+| Simple Average | 85.38% | 1.02% | −1.04% |
+| deskit KNN-DWS | 85.80% | 1.04% | −0.56% |
+| deskit KNN-DWS-I | 85.80% | 1.02% | −0.55% |
+| deskit OLA | 84.03% | 1.10% | −2.61% |
+| deskit KNORA-U | 85.60% | 1.02% | −0.78% |
+| deskit KNORA-E | 82.84% | 1.13% | −3.99% |
+| deskit KNORA-IU | 85.62% | 1.02% | −0.77% |
+| DESlib KNORA-U | 85.83% | 1.03% | −0.53% |
+| DESlib KNORA-E | 83.19% | 1.14% | −3.57% |
+| DESlib OLA | 81.19% | 1.29% | −5.90% |
+| DESlib META-DES | 85.29% | 1.11% | −1.15% |
+| DESlib KNOP | **86.10%** | 1.08% | **−0.21%** |
+| DESlib DESP | 85.78% | 1.03% | −0.57% |
+| DESlib DESKNN | 84.61% | 1.18% | −1.93% |
 
-deskit achieves a best mean score of 85.57%; DESlib achieves a best mean score of 85.97%.
+deskit achieves a best mean score of 85.80%; DESlib achieves a best mean score of 86.10%.
 
 ---
 
 ## Timing
 
-Mean fit + predict time in milliseconds, averaged across 20 seeds. Fit is measured once
+Mean fit + predict time in milliseconds, averaged across 100 seeds. Fit is measured once
 per dataset per seed; predict is measured over the full test set.
 
 deskit caches all model predictions on the validation set at fit time and reads from that
@@ -239,25 +244,25 @@ in performance isn't very pronounced in datasets of the size used.
 
 ### deskit
 
-| Dataset | KNN-DWS | OLA | KNORA-U | KNORA-E | KNORA-IU |
-|---|---|---|---|---|---|
-| California Housing | 25.2 ms | 22.5 ms | 26.2 ms | 34.8 ms | 27.9 ms |
-| Bike Sharing | 20.7 ms | 19.5 ms | 22.5 ms | 29.7 ms | 23.1 ms |
-| Abalone | 5.3 ms | 4.8 ms | 5.5 ms | 7.3 ms | 5.6 ms |
-| Diabetes | 1.4 ms | 1.3 ms | 1.3 ms | 1.5 ms | 1.3 ms |
-| Concrete Strength | 1.7 ms | 1.6 ms | 1.9 ms | 2.4 ms | 1.8 ms |
-| HAR | 67.9 ms | 55.0 ms | 56.3 ms | 60.6 ms | 57.7 ms |
-| Yeast | 4.2 ms | 3.2 ms | 2.9 ms | 3.1 ms | 2.9 ms |
-| Image Segment | 5.8 ms | 5.4 ms | 5.1 ms | 5.4 ms | 5.5 ms |
-| Vowel | 3.5 ms | 3.3 ms | 3.3 ms | 3.3 ms | 3.1 ms |
-| Waveform | 10.3 ms | 9.5 ms | 9.1 ms | 10.1 ms | 9.9 ms |
+| Dataset | KNN-DWS | KNN-DWS-I | OLA | KNORA-U | KNORA-E | KNORA-IU |
+|---|---|---|---|---|---|---|
+| California Housing | 24.4 ms | 23.9 ms | 22.9 ms | 26.2 ms | 34.5 ms | 27.9 ms |
+| Bike Sharing | 19.8 ms | 19.3 ms | 18.5 ms | 21.4 ms | 28.4 ms | 22.9 ms |
+| Abalone | 5.1 ms | 5.0 ms | 4.7 ms | 5.3 ms | 7.1 ms | 5.7 ms |
+| Diabetes | 1.4 ms | 1.4 ms | 1.2 ms | 1.3 ms | 1.6 ms | 1.3 ms |
+| Concrete Strength | 1.7 ms | 1.7 ms | 1.6 ms | 1.8 ms | 2.2 ms | 1.8 ms |
+| HAR | 66.9 ms | 55.5 ms | 55.0 ms | 55.9 ms | 60.8 ms | 57.9 ms |
+| Yeast | 3.5 ms | 3.2 ms | 3.0 ms | 2.8 ms | 3.1 ms | 3.0 ms |
+| Image Segment | 5.8 ms | 5.5 ms | 5.3 ms | 5.1 ms | 5.4 ms | 5.3 ms |
+| Vowel | 3.5 ms | 3.4 ms | 3.2 ms | 3.1 ms | 3.3 ms | 3.1 ms |
+| Waveform | 10.5 ms | 9.8 ms | 9.6 ms | 9.1 ms | 9.9 ms | 9.8 ms |
 
 ### DESlib (classification datasets only)
 
 | Dataset | KNORA-U | KNORA-E | OLA | META-DES | KNOP | DESP | DESKNN |
 |---|---|---|---|---|---|---|---|
-| HAR | 1859.8 ms | 1855.4 ms | 1870.5 ms | 2843.1 ms | 2819.2 ms | 1868.3 ms | 1911.7 ms |
-| Yeast | 57.5 ms | 58.2 ms | 60.0 ms | 104.5 ms | 80.0 ms | 57.7 ms | 67.3 ms |
-| Image Segment | 21.2 ms | 20.7 ms | 19.9 ms | 36.0 ms | 31.5 ms | 21.1 ms | 25.1 ms |
-| Vowel | 51.4 ms | 50.8 ms | 50.9 ms | 90.2 ms | 68.9 ms | 50.0 ms | 54.9 ms |
-| Waveform | 182.2 ms | 187.0 ms | 187.0 ms | 323.0 ms | 304.2 ms | 194.3 ms | 206.7 ms |
+| HAR | 1853.2 ms | 1862.5 ms | 1871.0 ms | 2857.3 ms | 2823.9 ms | 1886.4 ms | 1912.5 ms |
+| Yeast | 60.7 ms | 62.0 ms | 63.3 ms | 108.2 ms | 84.3 ms | 61.0 ms | 70.1 ms |
+| Image Segment | 20.9 ms | 21.2 ms | 20.8 ms | 36.9 ms | 32.2 ms | 21.3 ms | 25.0 ms |
+| Vowel | 53.5 ms | 53.7 ms | 54.7 ms | 96.3 ms | 72.8 ms | 53.6 ms | 58.0 ms |
+| Waveform | 186.2 ms | 191.4 ms | 193.1 ms | 333.2 ms | 312.2 ms | 197.7 ms | 211.4 ms |

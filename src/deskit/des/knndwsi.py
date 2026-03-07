@@ -1,0 +1,130 @@
+"""
+KNN-DWS-IU: K-Nearest Neighbors with Distance-Weighted Softmax — Inverse-weighted Union.
+"""
+from deskit.base.knnbase import KNNBase
+from deskit._config import make_finder, resolve_metric, prep_fit_inputs
+from deskit.utils import to_numpy
+import numpy as np
+
+
+class KNNDWSI(KNNBase):
+    """
+    KNN-DWS-IU: K-Nearest Neighbors with Distance-Weighted Softmax — Inverse-weighted Union.
+
+    Extends KNN-DWS by replacing the simple average of neighbor scores with an
+    inverse-distance-weighted average, so closer neighbors have a stronger
+    influence on the softmax routing — analogous to how KNORA-IU extends KNORA-U.
+
+    Parameters
+    ----------
+    task : str
+        'classification' or 'regression'.
+    metric : str or callable
+        Scoring function. Use 'log_loss' or 'prob_correct' with predict_proba()
+        output for classification; 'mae', 'mse', or 'rmse' for regression.
+    mode : str
+        'max' if higher scores are better, 'min' if lower.
+    k : int
+        Neighborhood size. Default: 10.
+    threshold : float
+        After per-neighborhood normalization (best=1.0, worst=0.0), models
+        below this fraction are excluded from softmax. 0.0 disables the gate;
+        1.0 reduces to OLA behavior. Default: 0.5.
+    temperature : float, optional
+        Softmax sharpness. Lower = sharper routing toward the local best model;
+        higher = softer blending. If not set, defaults to 0.1 for regression
+        (min-metrics) and 1.0 for classification (max-metrics) at predict time.
+    preset : str
+        Neighbor search preset. Default: 'balanced'. See list_presets().
+    """
+
+    def __init__(self, task, metric='mae', mode='min', k=10,
+                 threshold=0.5, temperature=None, preset='balanced', **kwargs):
+        metric_name, metric_fn = resolve_metric(metric)
+        finder = make_finder(preset, k, **kwargs)
+        super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
+        self.task         = task
+        self.threshold    = threshold
+        self._temperature = temperature
+        self._metric_name = metric_name
+
+    def fit(self, features, y, preds_dict):
+        """
+        Fit the routing model on validation data.
+
+        Parameters
+        ----------
+        features : array-like, shape (n_val, n_features)
+            Validation features. Must not overlap with train or test data.
+        y : array-like, shape (n_val,)
+            Validation ground-truth labels or values.
+        preds_dict : dict[str, array-like]
+            Validation predictions keyed by model name.
+            Shape (n_val,) for scalar metrics; (n_val, n_classes) for probability metrics.
+        """
+        features, y, preds_dict = prep_fit_inputs(
+            features, y, preds_dict, self._metric_name
+        )
+        super().fit(features, y, preds_dict)
+
+    def predict(self, x, temperature=None, threshold=None):
+        """
+        Return per-sample model weights.
+
+        Parameters
+        ----------
+        x : array-like, shape (n_features,) or (n_samples, n_features)
+        temperature : float, optional
+            Overrides the instance temperature for this call.
+        threshold : float, optional
+            Overrides the instance threshold for this call.
+
+        Returns
+        -------
+        dict or list of dict
+            Single sample: {model_name: weight}. Batch: list of such dicts.
+        """
+        t  = temperature if temperature is not None else (
+             self._temperature if self._temperature is not None else
+             (0.1 if self.mode == 'min' else 1.0))
+        th = threshold if threshold is not None else self.threshold
+
+        x          = np.atleast_2d(to_numpy(x))
+        batch_size = x.shape[0]
+
+        distances, indices = self.model.kneighbors(x)   # both (batch, k)
+
+        # Inverse-distance-weighted average of each model's scores over the K neighbors.
+        # Closer neighbors exert stronger influence on routing.
+        inv_dist    = 1.0 / np.maximum(distances, 1e-8)          # (batch, k)
+        inv_dist_w  = inv_dist / inv_dist.sum(axis=1, keepdims=True)  # normalised weights
+        neighbor_scores = self.matrix[indices]                    # (batch, k, n_models)
+        avg_scores  = (neighbor_scores * inv_dist_w[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
+
+        # Normalize per neighborhood: best model = 1.0, worst = 0.0
+        local_min   = avg_scores.min(axis=1, keepdims=True)
+        local_max   = avg_scores.max(axis=1, keepdims=True)
+        local_range = local_max - local_min
+        norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
+
+        # Zero out models below threshold.
+        # If nothing passes: fall back to single best.
+        if th > 0:
+            gate        = norm_scores >= th
+            any_pass    = gate.any(axis=1, keepdims=True)
+            gate        = np.where(any_pass, gate, norm_scores == 1.0)
+            norm_scores = norm_scores * gate
+
+        # Softmax
+        max_scores = norm_scores.max(axis=1, keepdims=True)
+        exp_scores = np.exp((norm_scores - max_scores) / t)
+        if th > 0:
+            exp_scores = exp_scores * gate
+        total   = exp_scores.sum(axis=1, keepdims=True)
+        weights = np.where(total > 0,
+                           exp_scores / np.where(total > 0, total, 1.0),
+                           np.full_like(exp_scores, 1.0 / len(self.models)))
+
+        if batch_size == 1:
+            return dict(zip(self.models, weights[0]))
+        return [dict(zip(self.models, w)) for w in weights]

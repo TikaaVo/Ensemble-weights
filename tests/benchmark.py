@@ -49,7 +49,7 @@ except ImportError:
 
 # ── Configuration ─────────────────────────────────────────────────────
 
-DEFAULT_N_SEEDS = 20
+DEFAULT_N_SEEDS = 100
 
 
 def make_seeds(n):

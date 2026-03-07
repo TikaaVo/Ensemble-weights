@@ -117,13 +117,14 @@ weights = router.predict(X_test[i])
 
 ## Algorithms
 
-| Method | Best for | Notes |
-|---|---|---|
-| `KNNDWS` | Regression | Softmax over neighbourhood-averaged scores. Temperature controls sharpness. |
-| `KNORAU` | Classification | Vote-count weighting. Each model earns one vote per neighbour it correctly classifies. |
-| `KNORAE` | Classification | Intersection-based. Only models correct on all neighbours survive; falls back to smaller neighbourhoods. |
-| `KNORAIU` | Classification | Like KNORA-U but votes are inverse-distance weighted. |
-| `OLA` | Both | Hard selection: only the single best model in the neighbourhood contributes. |
+| Method    | Best for | Notes                                                                                                    |
+|-----------|---|----------------------------------------------------------------------------------------------------------|
+| `KNNDWS`  | Regression | Softmax over neighbourhood-averaged scores. Temperature controls sharpness.                              |
+| `KNNDWSI` | Regression | Like KNN-DWS but scores are inverse-distance weighted.                                                   |
+| `KNORAU`  | Classification | Vote-count weighting. Each model earns one vote per neighbour it correctly classifies.                   |
+| `KNORAE`  | Classification | Intersection-based. Only models correct on all neighbours survive; falls back to smaller neighbourhoods. |
+| `KNORAIU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                    |
+| `OLA`     | Both | Hard selection: only the single best model in the neighbourhood contributes.                             |
 
 ---
 
@@ -179,7 +180,7 @@ Built-in metric strings: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_cor
 
 ## Benchmark results
 
-20-seed benchmark (seeds 0–19) on standard sklearn and OpenML datasets. "Best Single" is the best
+100-seed benchmark (seeds 0–99) on standard sklearn and OpenML datasets. "Best Single" is the best
 individual model selected on the validation set. "Simple Average" is uniform
 equal-weight blending, included as a baseline.
 
@@ -192,19 +193,19 @@ Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
 This pool was selected for having variability in architectures while avoiding a single dominant model.
 
-deskit algorithms tested: OLA, KNN-DWS, KNORA-U, KNORA-E, KNORA-IU.
+deskit algorithms tested: OLA, KNN-DWS, KNN-DWS-I, KNORA-U, KNORA-E, KNORA-IU.
 
 ### Regression (MAE, lower is better)
 
-% shown as delta vs Best Single. 10-seed mean.
+% shown as delta vs Best Single. 100-seed mean.
 
-| Dataset                      | Best Single | Simple Avg | deskit best            |
-|------------------------------|-----------|---|-----------------------|
-| California Housing (sklearn) | 0.3956    | +7.99% | **-2.24%** (KNN-DWS)  |
-| Bike Sharing (OpenML)        | 51.6779   | +47.77% | **-5.34%** (KNN-DWS)  |
-| Abalone (OpenML)             | **1.4981** | +1.14% | +1.47% (KNORA-U)      |
-| Diabetes (sklearn)           | **44.5042** | +3.18% | +1.17% (KNN-DWS)      |
-| Concrete Strength (OpenML)   | 5.2686 | +23.66% | **-1.05%** (KNORA-IU) |
+| Dataset                      | Best Single | Simple Avg | deskit best             |
+|------------------------------|-------------|------------|-------------------------|
+| California Housing (sklearn) | 0.3955      | +7.93%     | **−2.68%** (KNN-DWS-I)  |
+| Bike Sharing (OpenML)        | 51.604      | +48.39%    | **−6.25%** (KNN-DWS-I)  |
+| Abalone (OpenML)             | **1.4923**  | +1.29%     | +1.61% (KNORA-IU)       |
+| Diabetes (sklearn)           | **44.986**  | +2.98%     | +0.88% (KNN-DWS-I)      |
+| Concrete Strength (OpenML)   | 5.3934      | +21.30%    | **−2.85%** (KNORA-IU)   |
 
 deskit beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
 strong boost if used on the right dataset, but it might be counterproductive if used blindly.
@@ -216,37 +217,37 @@ and classification-like (like in Abalone).
 
 ### Classification (Accuracy, higher is better)
 
-% shown as delta vs Best Single. 10-seed mean.
+% shown as delta vs Best Single. 100-seed mean.
 
-| Dataset                | Best Single | Simple Avg | deskit best            |
-|------------------------|-------------|--------|-----------------------|
-| HAR (OpenML)           | 98.24%      | -0.33% | **+0.14%** (KNN-DWS)  |
-| Yeast (OpenML)         | 58.87%      | +0.77% | **+1.66%** (KNORA-IU) |
-| Image Segment (OpenML) | 93.70%      | +1.40% | **+2.09%** (KNORA-IU) |
-| Waveform (OpenML)      | 89.95%      | -2.05% | **+0.93%** (KNORA-E)  |
-| Vowel (OpenML)         | **85.91%**  | -0.98% | -0.40% (KNN-DWS)      |
+| Dataset                | Best Single | Simple Avg | deskit best             |
+|------------------------|-------------|------------|-------------------------|
+| HAR (OpenML)           | 98.24%      | −0.32%     | **+0.14%** (KNN-DWS-I)  |
+| Yeast (OpenML)         | 59.19%      | +0.46%     | **+1.48%** (KNORA-IU)   |
+| Image Segment (OpenML) | 93.65%      | +1.70%     | **+2.33%** (KNORA-IU)   |
+| Waveform (OpenML)      | **86.28%**  | −1.04%     | −0.55% (KNN-DWS-I)      |
+| Vowel (OpenML)         | 90.54%      | −1.81%     | **+0.93%** (KNORA-IU)   |
 
 deskit beats or matches best single and simple averaging on 4/5 classification datasets. As seen on regression, DES
 can improve or hurt performance, so it must be used wisely, but if used correctly it can show promising results.
 
 ### Speed (mean ms fit + predict, 20 seeds, all tested algorithms combined)
 
-Consider that usually it is recommended to only use one algorithm at a time, this benchmark ran five of them at the
-same time, so with a single one runtime is expected to be about 5x faster. For this benchmark, `preset='balanced'` was used,
+Consider that usually it is recommended to only use one algorithm at a time, this benchmark ran six of them at the
+same time, so with a single one runtime is expected to be about 6x faster. For this benchmark, `preset='balanced'` was used,
 so the backend was an ANN algorithm with FAISS IVF.
 
 | Dataset            | deskit    |
-|--------------------|----------|
-| California Housing | 136.6 ms |
-| Bike Sharing       | 115.5 ms |
-| Abalone            | 28.5 ms  |
-| Diabetes           | 8.1 ms   |
-| Conrete Strength   | 9.4 ms   |
-| HAR                | 297.5 ms |
-| Yeast              | 16.3 ms  |
-| Image Segment      | 27.2 ms  |
-| Waveform           | 48.9 ms  |
-| Vowel              | 16.5 ms  |
+|--------------------|-----------|
+| California Housing | 159.8 ms  |
+| Bike Sharing       | 130.3 ms  |
+| Abalone            | 32.9 ms   |
+| Diabetes           | 8.2 ms    |
+| Conrete Strength   | 10.8 ms   |
+| HAR                | 352.0 ms  |
+| Yeast              | 18.6 ms   |
+| Image Segment      | 32.4 ms   |
+| Waveform           | 58.7 ms   |
+| Vowel              | 19.6 ms   |
 
 deskit caches all model predictions on the validation set at fit time and reads
 from that matrix at inference.
