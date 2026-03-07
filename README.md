@@ -1,15 +1,15 @@
 # deskit
 
-[deskit](https://TikaaVo.github.io/deskit/) is a flexible, light, and easy-to-use ensembling library that implements
+[deskit](https://TikaaVo.github.io/deskit/) is a flexible, lightweight, and easy-to-use ensembling library that implements
 Dynamic Ensemble Selection (DES) algorithms for ensembling multiple ML models
-on a singular dataset. 
+on a given dataset. 
 
 The library works entirely with data, taking as input a validation dataset 
-along with pre-computed predictions and outputting a dictionary of weights 
+along with precomputed predictions and outputting a dictionary of weights 
 per model. This means that it can be used with any library or model without 
 requiring any wrappers, including custom models, popular ML libraries, and APIs.
 
-deskit contains multiple different DES algorithms, and it works with both classification
+deskit includes several DES algorithms, and it works with both classification
 and regression.
 
 # Dynamic Ensemble Selection
@@ -24,7 +24,7 @@ concept that there are regions of feature space where certain models perform par
 so every base model can be an expert in a different region.
 Only the most competent, or an ensemble of the most competent models is selected for the prediction.
 
-Through empirical studies, DES has been shown to perform best with small-sized, imbalanced, or 
+Through empirical studies, DES has been shown to perform best on small-sized, imbalanced, or 
 heterogeneous datasets, as well as non-stationary data (concept drift), models that haven't perfected a dataset, 
 and when used on an ensemble of models with differing architectures and perspectives.
 
@@ -204,7 +204,7 @@ deskit algorithms tested: OLA, KNN-DWS, KNORA-U, KNORA-E, KNORA-IU.
 | Bike Sharing (OpenML)        | 51.6779   | +47.77% | **-5.34%** (KNN-DWS)  |
 | Abalone (OpenML)             | **1.4981** | +1.14% | +1.47% (KNORA-U)      |
 | Diabetes (sklearn)           | **44.5042** | +3.18% | +1.17% (KNN-DWS)      |
-| Conrete Strength (OpenML)    | 5.2686 | +23.66% | **-1.05%** (KNORA-IU) |
+| Concrete Strength (OpenML)   | 5.2686 | +23.66% | **-1.05%** (KNORA-IU) |
 
 deskit beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
 strong boost if used on the right dataset, but it might be counterproductive if used blindly.
