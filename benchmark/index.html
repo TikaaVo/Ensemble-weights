@@ -1376,7 +1376,7 @@ overlap.</p>
 </tr>
 <tr>
 <td>Abalone</td>
-<td>1.4981 ± 0.044</td>
+<td><strong>1.4981 ± 0.044</strong></td>
 <td>+1.14%</td>
 <td>+2.68%</td>
 <td>+3.67%</td>
@@ -1386,7 +1386,7 @@ overlap.</p>
 </tr>
 <tr>
 <td>Diabetes</td>
-<td>44.504 ± 2.645</td>
+<td><strong>44.504 ± 2.645</strong></td>
 <td>+3.18%</td>
 <td>+1.17%</td>
 <td>+3.56%</td>
@@ -1408,7 +1408,9 @@ overlap.</p>
 </table>
 <hr />
 <p>KNORA variants are designed for classification, which explains the poor performance
-on regression datasets; An exception occurs in Abalone, because ring amounts are whole numbers, usually 0-29.</p>
+on regression datasets; However, some exception can occur in certain datasets, either where
+feature space is has hard clusters (like in Concrete Strength) or when the target is discrete
+and classification-like (like in Abalone).</p>
 <h2 id="classification-results">Classification results</h2>
 <p>Accuracy, higher is better. % shown as delta vs Best Single. 20-seed mean ± std.
 Classification datasets include a comparison against <a href="https://github.com/scikit-learn-contrib/DESlib">DESlib</a>,
@@ -1510,7 +1512,7 @@ a mature sklearn-compatible DES library.</p>
 </tr>
 </tbody>
 </table>
-<p>DESlib achieves a best mean score of 98.35%; despy achieves a best mean score of 98.38%.</p>
+<p>despy achieves a best mean score of 98.38%; DESlib achieves a best mean score of 98.35%.</p>
 <h3 id="yeast_1">Yeast</h3>
 <table>
 <thead>
@@ -1608,7 +1610,7 @@ a mature sklearn-compatible DES library.</p>
 </tr>
 </tbody>
 </table>
-<p>DESlib achieves a best mean score of 59.48%; despy achieves a best mean score of 59.85%.</p>
+<p>despy achieves a best mean score of 59.85%; DESlib achieves a best mean score of 59.48%.</p>
 <h3 id="image-segment_1">Image Segment</h3>
 <table>
 <thead>
@@ -1706,7 +1708,7 @@ a mature sklearn-compatible DES library.</p>
 </tr>
 </tbody>
 </table>
-<p>DESlib achieves a best mean score of 95.48%; despy achieves a best mean score of 95.66%.</p>
+<p>despy achieves a best mean score of 95.66%; DESlib achieves a best mean score of 95.48%.</p>
 <h3 id="vowel_1">Vowel</h3>
 <table>
 <thead>
@@ -1804,7 +1806,7 @@ a mature sklearn-compatible DES library.</p>
 </tr>
 </tbody>
 </table>
-<p>DESlib achieves a best mean score of 89.70%; despy achieves a best mean score of 90.78%.</p>
+<p>despy achieves a best mean score of 90.78%; DESlib achieves a best mean score of 89.70%.</p>
 <h3 id="waveform_1">Waveform</h3>
 <table>
 <thead>
@@ -1902,7 +1904,7 @@ a mature sklearn-compatible DES library.</p>
 </tr>
 </tbody>
 </table>
-<p>DESlib achieves a best mean score of 85.97%; despy achieves a best mean score of 85.57%.</p>
+<p>despy achieves a best mean score of 85.57%; DESlib achieves a best mean score of 85.97%.</p>
 <hr />
 <h2 id="timing">Timing</h2>
 <p>Mean fit + predict time in milliseconds, averaged across 20 seeds. Fit is measured once
