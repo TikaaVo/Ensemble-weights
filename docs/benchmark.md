@@ -97,18 +97,20 @@ overlap.
 
 MAE, lower is better. % shown as delta vs Best Single. 20-seed mean ± std.
 
-| Dataset | Best Single | Simple Avg | KNN-DWS | OLA | KNORA-U | KNORA-E | KNORA-IU |
-|---|---|---|---|---|---|---|---|
-| California Housing | 0.3956 ± 0.008 | +7.99% | **−2.24%** | −0.03% | −0.79% | +7.46% | −0.99% |
-| Bike Sharing | 51.678 ± 0.860 | +47.77% | **−5.34%** | −2.97% | +6.57% | +14.79% | +5.39% |
-| Abalone | 1.4981 ± 0.044 | +1.14% | +2.68% | +3.67% | +1.47% | +7.18% | +1.47% |
-| Diabetes | 44.504 ± 2.645 | +3.18% | +1.17% | +3.56% | +5.86% | +15.34% | +5.74% |
-| Concrete Strength | 5.2686 ± 0.336 | +23.66% | +1.68% | +3.54% | +2.49% | +11.84% | **−1.05%** |
+| Dataset | Best Single        | Simple Avg | KNN-DWS | OLA | KNORA-U | KNORA-E | KNORA-IU |
+|---|--------------------|---|---|---|---|---|---|
+| California Housing | 0.3956 ± 0.008     | +7.99% | **−2.24%** | −0.03% | −0.79% | +7.46% | −0.99% |
+| Bike Sharing | 51.678 ± 0.860     | +47.77% | **−5.34%** | −2.97% | +6.57% | +14.79% | +5.39% |
+| Abalone | **1.4981 ± 0.044** | +1.14% | +2.68% | +3.67% | +1.47% | +7.18% | +1.47% |
+| Diabetes | **44.504 ± 2.645** | +3.18% | +1.17% | +3.56% | +5.86% | +15.34% | +5.74% |
+| Concrete Strength | 5.2686 ± 0.336     | +23.66% | +1.68% | +3.54% | +2.49% | +11.84% | **−1.05%** |
 
 ---
 
 KNORA variants are designed for classification, which explains the poor performance
-on regression datasets; An exception occurs in Abalone, because ring amounts are whole numbers, usually 0-29.
+on regression datasets; However, some exception can occur in certain datasets, either where
+feature space is has hard clusters (like in Concrete Strength) or when the target is discrete
+and classification-like (like in Abalone).
 
 ## Classification results
 
@@ -135,7 +137,7 @@ a mature sklearn-compatible DES library.
 | DESlib DESP | 97.97% | 0.27% | −0.28% |
 | DESlib DESKNN | 97.81% | 0.33% | −0.44% |
 
-DESlib achieves a best mean score of 98.35%; despy achieves a best mean score of 98.38%.
+despy achieves a best mean score of 98.38%; DESlib achieves a best mean score of 98.35%.
 
 ### Yeast
 
@@ -156,7 +158,7 @@ DESlib achieves a best mean score of 98.35%; despy achieves a best mean score of
 | DESlib DESP | 58.77% | 1.72% | −0.17% |
 | DESlib DESKNN | 57.93% | 1.74% | −1.60% |
 
-DESlib achieves a best mean score of 59.48%; despy achieves a best mean score of 59.85%.
+despy achieves a best mean score of 59.85%; DESlib achieves a best mean score of 59.48%.
 
 ### Image Segment
 
@@ -177,7 +179,7 @@ DESlib achieves a best mean score of 59.48%; despy achieves a best mean score of
 | DESlib DESP | 94.68% | 0.91% | +1.04% |
 | DESlib DESKNN | 94.76% | 1.00% | +1.13% |
 
-DESlib achieves a best mean score of 95.48%; despy achieves a best mean score of 95.66%.
+despy achieves a best mean score of 95.66%; DESlib achieves a best mean score of 95.48%.
 
 ### Vowel
 
@@ -198,7 +200,7 @@ DESlib achieves a best mean score of 95.48%; despy achieves a best mean score of
 | DESlib DESP | 85.56% | 2.99% | −4.88% |
 | DESlib DESKNN | 85.23% | 3.60% | −5.25% |
 
-DESlib achieves a best mean score of 89.70%; despy achieves a best mean score of 90.78%.
+despy achieves a best mean score of 90.78%; DESlib achieves a best mean score of 89.70%.
 
 ### Waveform
 
@@ -219,7 +221,7 @@ DESlib achieves a best mean score of 89.70%; despy achieves a best mean score of
 | DESlib DESP | 85.50% | 0.82% | −0.47% |
 | DESlib DESKNN | 84.39% | 0.95% | −1.78% |
 
-DESlib achieves a best mean score of 85.97%; despy achieves a best mean score of 85.57%.
+despy achieves a best mean score of 85.57%; DESlib achieves a best mean score of 85.97%.
 
 ---
 
