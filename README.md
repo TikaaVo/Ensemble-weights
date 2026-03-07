@@ -180,6 +180,11 @@ Built-in metric strings: `accuracy`, `mae`, `mse`, `rmse`, `log_loss`, `prob_cor
 
 ---
 
+## Data types
+
+deskit can be used with non-tabular data types like images, time series, and more. However, when used, the
+passed features either need to be run through a feature extractor beforehand, such as a CNN backbone for images.
+
 ## Benchmark results
 
 100-seed benchmark (seeds 0–99) on standard sklearn and OpenML datasets. "Best Single" is the best
