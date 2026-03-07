@@ -12,7 +12,7 @@ requiring any wrappers, including custom models, popular ML libraries, and APIs.
 deskit includes several DES algorithms, and it works with both classification
 and regression.
 
-See the documentation [here](https://TikaaVo.github.io/deskit/).
+See the full documentation [here](https://TikaaVo.github.io/deskit/).
 
 # Dynamic Ensemble Selection
 
