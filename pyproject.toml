@@ -7,7 +7,7 @@ name = "despy"
 version = "0.1.0"
 description = "A Python library for Dynamic Ensemble Selection"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.8"
 authors = [
     { name = "Tikhon Vodyanov" }
@@ -15,13 +15,15 @@ authors = [
 keywords = ["ensemble", "machine learning", "dynamic ensemble selection", "model routing"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "numpy>=1.21",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.optional-dependencies]
 exact = ["scikit-learn>=1.0"]
