@@ -8,9 +8,9 @@ The function prints a formatted report and returns a dict of raw metrics for
 programmatic use.
 """
 import numpy as np
-from despy._config    import resolve_metric, prep_fit_inputs
-from despy.base.knnbase import KNNBase
-from despy.neighbors  import KNNNeighborFinder
+from deskit._config    import resolve_metric, prep_fit_inputs
+from deskit.base.knnbase import KNNBase
+from deskit.neighbors  import KNNNeighborFinder
 
 # Internal helpers
 

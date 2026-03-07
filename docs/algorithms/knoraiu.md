@@ -44,7 +44,7 @@ uniform weights are assigned.
 
 ## Example
 ```python
-from despy.des.knoraiu import KNORAIU
+from deskit.des.knoraiu import KNORAIU
 
 router = KNORAIU(task="classification", metric="accuracy", mode="max", k=20)
 router.fit(X_val, y_val, val_preds)

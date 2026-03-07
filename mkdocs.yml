@@ -1,6 +1,6 @@
-site_name: despy
-site_url: https://TikaaVo.github.io/despy
-repo_url: https://github.com/TikaaVo/despy
+site_name: deskit
+site_url: https://TikaaVo.github.io/deskit
+repo_url: https://github.com/TikaaVo/deskit
 theme:
   name: material
 

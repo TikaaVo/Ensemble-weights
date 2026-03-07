@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-despy Showcase
+deskit Showcase
 ==============
-Benchmarks despy against DESlib and DESReg across regression and
+Benchmarks deskit against DESlib and DESReg across regression and
 classification tasks using a deliberately diverse pool of weaker,
 more opinionated models.
 
-Why despy is framework-agnostic
-  despy receives any numeric predictions — numpy arrays, PyTorch tensors, JAX
+Why deskit is framework-agnostic
+  deskit receives any numeric predictions — numpy arrays, PyTorch tensors, JAX
   arrays, Keras model outputs — and returns routing weights. It never calls
   fit() or predict() on your models; it only sees their outputs.
   DESlib requires sklearn-compatible estimators (fit/predict/predict_proba API)
@@ -48,7 +48,7 @@ Regression datasets
   Diabetes            sklearn built-in,     442 samples, 10 features
   Concrete Strength   OpenML 4353,        1,030 samples,  8 features
 
-Classification datasets   (despy vs DESlib, direct head-to-head)
+Classification datasets   (deskit vs DESlib, direct head-to-head)
   HAR                 OpenML 1478,       10,299 samples, 561 features, 6 classes
   Yeast               OpenML 181,         1,484 samples,   8 features, 10 classes
   Image Segment       OpenML 36,          2,310 samples,  19 features,  7 classes
@@ -77,11 +77,11 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from despy.des.knndws  import KNNDWS
-from despy.des.ola     import OLA
-from despy.des.knorau  import KNORAU
-from despy.des.knorae  import KNORAE
-from despy.des.knoraiu import KNORAIU
+from deskit.des.knndws  import KNNDWS
+from deskit.des.ola     import OLA
+from deskit.des.knorau  import KNORAU
+from deskit.des.knorae  import KNORAE
+from deskit.des.knoraiu import KNORAIU
 
 warnings.filterwarnings('ignore')
 
@@ -116,9 +116,9 @@ except ImportError:
 # https://github.com/lperezgodoy/DESReg  /  pip install DESReg
 #
 # Architecture note: DESReg bags the pool internally from unfitted regressors
-# and manages the DSEL split itself. This is fundamentally different from despy,
+# and manages the DSEL split itself. This is fundamentally different from deskit,
 # which accepts pre-fitted model outputs and never touches or calls your models.
-# DESReg is sklearn-only; despy is framework-agnostic.
+# DESReg is sklearn-only; deskit is framework-agnostic.
 try:
     from desReg.des.DESRegression import DESRegression as _DESReg
     DESREG_AVAILABLE = True
@@ -178,18 +178,18 @@ def banner():
                  if DESREG_AVAILABLE
                  else 'not installed (pip install DESReg) — skipping comparison')
     print(f"\n{'━' * W}")
-    print("  despy Showcase  —  Diverse Pool Benchmark")
+    print("  deskit Showcase  —  Diverse Pool Benchmark")
     print(f"{'━' * W}")
     print("  Regression pool:      KNN · Decision Tree · SVR · Ridge · Bayesian Ridge")
     print("  Classification pool:  KNN · Decision Tree · Gaussian NB · SVM-RBF · Logistic Reg")
     print()
     print("  Best Single       best val-set model applied to test set everywhere")
     print("  Simple Average    uniform equal-weight blend of all models (no tuning)")
-    print("  despy             KNN-DWS · OLA · KNORA-U · KNORA-E · KNORA-IU")
+    print("  deskit             KNN-DWS · OLA · KNORA-U · KNORA-E · KNORA-IU")
     print(f"  DESlib            {dl_status}")
     print(f"  DESReg            {dr_status}")
     print()
-    print("  despy is framework-agnostic: pass predictions from PyTorch, JAX,")
+    print("  deskit is framework-agnostic: pass predictions from PyTorch, JAX,")
     print("  Keras, or any library. DESlib and DESReg require sklearn estimators.")
     print("  DESlib has no regression support. DESReg has no classification support.")
     print(f"{'━' * W}")
@@ -235,7 +235,7 @@ def show_results_clf(rows, best_acc):
     print(f"  {'-'*48}  {'-'*9}  {'-'*9}")
     prev_section = None
     for name, acc in rows:
-        cur_section = 'deslib' if name.startswith('DESlib') else 'despy'
+        cur_section = 'deslib' if name.startswith('DESlib') else 'deskit'
         if cur_section != prev_section and prev_section is not None:
             print(f"  {'·'*48}  {'·'*9}  {'·'*9}")
         prev_section = cur_section
@@ -249,7 +249,7 @@ def show_results_clf(rows, best_acc):
 
 
 def show_timing(methods, fit_times, predict_times, n_test):
-    print(f"\n  despy timing on {n_test:,} test samples:")
+    print(f"\n  deskit timing on {n_test:,} test samples:")
     print(f"    {'Method':<14}  {'Fit (ms)':>8}  {'Predict (ms)':>12}  {'ms/sample':>10}")
     print(f"    {'-'*14}  {'-'*8}  {'-'*12}  {'-'*10}")
     for m in methods:
@@ -483,7 +483,7 @@ def load_waveform():
 # ── Router factory ─────────────────────────────────────────────────────────────
 
 def _make_router(task, method, metric, mode, k, preset='balanced'):
-    """Instantiate a despy algorithm class, suppressing the preset print."""
+    """Instantiate a deskit algorithm class, suppressing the preset print."""
     with contextlib.redirect_stdout(io.StringIO()):
         return _DES_CLASSES[method](task=task, metric=metric, mode=mode, k=k, preset=preset)
 
@@ -590,21 +590,21 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
 
 def _label_reg(method):
     return {
-        'knn-dws':  f'despy KNN-DWS  (gate={THRESHOLDS_REG["knn-dws"]}, T={TEMP_REG})',
-        'ola':       'despy OLA',
-        'knora-u':  f'despy KNORA-U   (th={THRESHOLDS_REG["knora-u"]})',
-        'knora-e':  f'despy KNORA-E   (th={THRESHOLDS_REG["knora-e"]})',
-        'knora-iu': f'despy KNORA-IU  (th={THRESHOLDS_REG["knora-iu"]})',
+        'knn-dws':  f'deskit KNN-DWS  (gate={THRESHOLDS_REG["knn-dws"]}, T={TEMP_REG})',
+        'ola':       'deskit OLA',
+        'knora-u':  f'deskit KNORA-U   (th={THRESHOLDS_REG["knora-u"]})',
+        'knora-e':  f'deskit KNORA-E   (th={THRESHOLDS_REG["knora-e"]})',
+        'knora-iu': f'deskit KNORA-IU  (th={THRESHOLDS_REG["knora-iu"]})',
     }[method]
 
 
 def _label_clf(method):
     return {
-        'knn-dws':  f'despy KNN-DWS  (gate={THRESHOLDS_CLF["knn-dws"]}, T={TEMP_CLF})',
-        'ola':       'despy OLA',
-        'knora-u':  f'despy KNORA-U   (th={THRESHOLDS_CLF["knora-u"]})',
-        'knora-e':  f'despy KNORA-E   (th={THRESHOLDS_CLF["knora-e"]})',
-        'knora-iu': f'despy KNORA-IU  (th={THRESHOLDS_CLF["knora-iu"]})',
+        'knn-dws':  f'deskit KNN-DWS  (gate={THRESHOLDS_CLF["knn-dws"]}, T={TEMP_CLF})',
+        'ola':       'deskit OLA',
+        'knora-u':  f'deskit KNORA-U   (th={THRESHOLDS_CLF["knora-u"]})',
+        'knora-e':  f'deskit KNORA-E   (th={THRESHOLDS_CLF["knora-e"]})',
+        'knora-iu': f'deskit KNORA-IU  (th={THRESHOLDS_CLF["knora-iu"]})',
     }[method]
 
 
@@ -612,13 +612,13 @@ def _label_clf(method):
 
 def run_desreg(X_tv_s, y_tv, X_test_s, y_test, seed=SEED, k=K_REG, verbose=True):
     """
-    Run DESReg on the same data budget as despy.
+    Run DESReg on the same data budget as deskit.
 
     DESReg receives X_tv (train+val combined, pre-scaled) and manages its own
     DSEL split internally via DSEL_perc=0.25 — giving it the same ~20% of total
-    data for its competence region that despy uses as its val set.
+    data for its competence region that deskit uses as its val set.
 
-    Pool: identical 5-model pool as despy (no nested ensembles, so bagging is fast).
+    Pool: identical 5-model pool as deskit (no nested ensembles, so bagging is fast).
     n_estimators_bag=2 is the minimum valid value; each instance is a
     BaggingRegressor trained on a bootstrap sample of X_tv.
 
@@ -701,7 +701,7 @@ def run_regression(loader, seed=SEED, verbose=True):
     X_tv_s   = _prep_tv.fit_transform(X_tv)
     _print(f"\n  Split -> {len(X_tr):,} train / {len(X_val):,} val / {len(X_test):,} test")
     if DESLIB_AVAILABLE and verbose:
-        _print("  Note: DESlib does not support regression — only despy benchmarked here.")
+        _print("  Note: DESlib does not support regression — only deskit benchmarked here.")
 
     if verbose:
         section("Training models  (val-set MAE)")
@@ -741,7 +741,7 @@ def run_regression(loader, seed=SEED, verbose=True):
         if verbose:
             section("DESReg comparison  (same regressor types, same data budget)")
             _print("  DESReg manages its own bagging and DSEL split internally.")
-            _print("  Same 5-model pool as despy -- comparison is routing quality only.")
+            _print("  Same 5-model pool as deskit -- comparison is routing quality only.")
             _print("  n_estimators_bag=2, DSEL_perc=0.25 (~20% of total data for DSEL).")
         dr_results, dr_fit_ms, dr_pred_ms = run_desreg(
             X_tv_s, y_tv, X_test_s, y_test, seed=seed, k=K_REG, verbose=verbose)
@@ -894,7 +894,7 @@ if __name__ == '__main__':
     banner()
 
     print(f"\n{'━' * W}")
-    print("  Regression  (despy vs DESReg — DESlib has no regression support)")
+    print("  Regression  (deskit vs DESReg — DESlib has no regression support)")
     print(f"{'━' * W}")
     run_regression(load_california)
     run_regression(load_bike)
@@ -903,7 +903,7 @@ if __name__ == '__main__':
     run_regression(load_concrete)
 
     print(f"\n\n{'━' * W}")
-    print("  Classification  (despy vs DESlib — direct head-to-head)")
+    print("  Classification  (deskit vs DESlib — direct head-to-head)")
     print(f"{'━' * W}")
     run_classification(load_har,      k=20)
     run_classification(load_yeast,    k=10)

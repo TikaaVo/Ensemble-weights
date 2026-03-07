@@ -45,7 +45,7 @@ default, `search_k` is set to `n_trees * k`.
 ## Example
 
 ```python
-from despy.des.knorau import KNORAU
+from deskit.des.knorau import KNORAU
 
 router = KNORAU(task="classification", metric="accuracy", mode="max", k=20,
                 preset="custom", finder="annoy", n_trees=100)
@@ -58,7 +58,7 @@ weights = router.predict(x)
 ## Notes
 
 Annoy has a known bug on Apple Silicon (M1/M2/M3) where the index silently returns
-only 1 neighbour regardless of `k`. despy detects this at fit time and raises a
+only 1 neighbour regardless of `k`. deskit detects this at fit time and raises a
 `RuntimeError` with instructions to switch to `preset="fast"` or `preset="exact"` instead.
 
 Annoy does not have a built-in preset, and it is only available via `preset="custom"` with

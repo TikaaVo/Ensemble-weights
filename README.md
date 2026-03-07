@@ -1,6 +1,6 @@
-# despy
+# deskit
 
-[despy](https://TikaaVo.github.io/despy/) is a flexible, light, and easy-to-use ensembling library that implements
+[deskit](https://TikaaVo.github.io/deskit/) is a flexible, light, and easy-to-use ensembling library that implements
 Dynamic Ensemble Selection (DES) algorithms for ensembling multiple ML models
 on a singular dataset. 
 
@@ -9,7 +9,7 @@ along with pre-computed predictions and outputting a dictionary of weights
 per model. This means that it can be used with any library or model without 
 requiring any wrappers, including custom models, popular ML libraries, and APIs.
 
-despy contains multiple different DES algorithms, and it works with both classification
+deskit contains multiple different DES algorithms, and it works with both classification
 and regression.
 
 # Dynamic Ensemble Selection
@@ -37,7 +37,7 @@ or when a single model dominates a dataset.
 ## Installation
 
 ```bash
-pip install despy
+pip install deskit
 
 # The library runs with Nearest Neighbors from sklearn for exact KNN
 pip install scikit-learn
@@ -62,10 +62,10 @@ NumPy (>= 1.21)
 
 ## Quick start
 
-Full explanation of the algorithms, syntax, and parameters is available in the [documentation](https://TikaaVo.github.io/despy/).
+Full explanation of the algorithms, syntax, and parameters is available in the [documentation](https://TikaaVo.github.io/deskit/).
 
 ```python
-from despy.des.knorau  import KNORAU
+from deskit.des.knorau  import KNORAU
 
 # 1. Train your models
 models = {"rf": rf, "xgb": xgb, "mlp": mlp}
@@ -93,13 +93,13 @@ get a final probability distribution, then take the argmax.
 
 ---
 
-## Why despy?
+## Why deskit?
 
-Most DES libraries are tied to scikit-learn. despy only ever sees a numpy
+Most DES libraries are tied to scikit-learn. deskit only ever sees a numpy
 feature matrix and a dict of prediction arrays, so the models themselves are
 never touched after training. This allows for more flexibility and a lighter library.
 
-Furthermore, despy works with both classification and regression, while the majority of DES
+Furthermore, deskit works with both classification and regression, while the majority of DES
 libraries and literature is focused only on classification tasks.
 
 ```python
@@ -129,7 +129,7 @@ weights = router.predict(X_test[i])
 
 ## ANN backends
 
-despy supports three Approximate Nearest Neighbour backends plus exact search:
+deskit supports three Approximate Nearest Neighbour backends plus exact search:
 
 | Preset | Backend | Install | Notes |
 |---|---|---|---|
@@ -185,20 +185,20 @@ equal-weight blending, included as a baseline.
 
 It is important to consider that these experiments were run with the default hyperparameters, meaning that
 they could vary greatly with different values, and results could improve with tuning.
-For a more detailed benchmark breakdown, see the [documentation](https://TikaaVo.github.io/despy/).
+For a more detailed benchmark breakdown, see the [documentation](https://TikaaVo.github.io/deskit/).
 To see the full results, see `results.txt` in the `tests` folder.
 
 Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
 This pool was selected for having variability in architectures while avoiding a single dominant model.
 
-despy algorithms tested: OLA, KNN-DWS, KNORA-U, KNORA-E, KNORA-IU.
+deskit algorithms tested: OLA, KNN-DWS, KNORA-U, KNORA-E, KNORA-IU.
 
 ### Regression (MAE, lower is better)
 
 % shown as delta vs Best Single. 10-seed mean.
 
-| Dataset                      | Best Single | Simple Avg | despy best            |
+| Dataset                      | Best Single | Simple Avg | deskit best            |
 |------------------------------|-----------|---|-----------------------|
 | California Housing (sklearn) | 0.3956    | +7.99% | **-2.24%** (KNN-DWS)  |
 | Bike Sharing (OpenML)        | 51.6779   | +47.77% | **-5.34%** (KNN-DWS)  |
@@ -206,7 +206,7 @@ despy algorithms tested: OLA, KNN-DWS, KNORA-U, KNORA-E, KNORA-IU.
 | Diabetes (sklearn)           | **44.5042** | +3.18% | +1.17% (KNN-DWS)      |
 | Conrete Strength (OpenML)    | 5.2686 | +23.66% | **-1.05%** (KNORA-IU) |
 
-despy beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
+deskit beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
 strong boost if used on the right dataset, but it might be counterproductive if used blindly.
 
 KNORA variants are designed for classification, which explains the poor performance
@@ -218,7 +218,7 @@ and classification-like (like in Abalone).
 
 % shown as delta vs Best Single. 10-seed mean.
 
-| Dataset                | Best Single | Simple Avg | despy best            |
+| Dataset                | Best Single | Simple Avg | deskit best            |
 |------------------------|-------------|--------|-----------------------|
 | HAR (OpenML)           | 98.24%      | -0.33% | **+0.14%** (KNN-DWS)  |
 | Yeast (OpenML)         | 58.87%      | +0.77% | **+1.66%** (KNORA-IU) |
@@ -226,7 +226,7 @@ and classification-like (like in Abalone).
 | Waveform (OpenML)      | 89.95%      | -2.05% | **+0.93%** (KNORA-E)  |
 | Vowel (OpenML)         | **85.91%**  | -0.98% | -0.40% (KNN-DWS)      |
 
-despy beats or matches best single and simple averaging on 4/5 classification datasets. As seen on regression, DES
+deskit beats or matches best single and simple averaging on 4/5 classification datasets. As seen on regression, DES
 can improve or hurt performance, so it must be used wisely, but if used correctly it can show promising results.
 
 ### Speed (mean ms fit + predict, 20 seeds, all tested algorithms combined)
@@ -235,7 +235,7 @@ Consider that usually it is recommended to only use one algorithm at a time, thi
 same time, so with a single one runtime is expected to be about 5x faster. For this benchmark, `preset='balanced'` was used,
 so the backend was an ANN algorithm with FAISS IVF.
 
-| Dataset            | despy    |
+| Dataset            | deskit    |
 |--------------------|----------|
 | California Housing | 136.6 ms |
 | Bike Sharing       | 115.5 ms |
@@ -248,7 +248,7 @@ so the backend was an ANN algorithm with FAISS IVF.
 | Waveform           | 48.9 ms  |
 | Vowel              | 16.5 ms  |
 
-despy caches all model predictions on the validation set at fit time and reads
+deskit caches all model predictions on the validation set at fit time and reads
 from that matrix at inference.
 
 ---

@@ -41,7 +41,7 @@ accuracy.
 
 ## Example
 ```python
-from despy.des.ola import OLA
+from deskit.des.ola import OLA
 
 router = OLA(task="regression", metric="mae", mode="min", k=20)
 router.fit(X_val, y_val, val_preds)

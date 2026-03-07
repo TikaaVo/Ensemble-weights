@@ -1,9 +1,9 @@
 """
 KNORA-IU: K-Nearest Oracles — Inverse-weighted Union.
 """
-from despy.base.knnbase import KNNBase
-from despy._config import make_finder, resolve_metric, prep_fit_inputs
-from despy.utils import to_numpy
+from deskit.base.knnbase import KNNBase
+from deskit._config import make_finder, resolve_metric, prep_fit_inputs
+from deskit.utils import to_numpy
 import numpy as np
 
 

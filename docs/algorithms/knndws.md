@@ -43,7 +43,7 @@ softmax with temperature.
 ## Example
 ```python
 # Regression
-from despy.des.knndsw import KNNDWS
+from deskit.des.knndsw import KNNDWS
 
 router = KNNDWS(task="regression", metric="mae", mode="min", k=20)
 router.fit(X_val, y_val, val_preds)
@@ -52,7 +52,7 @@ weights = router.predict(x)
 
 ```python
 # Classification
-from despy.des.knndsw import KNNDWS
+from deskit.des.knndsw import KNNDWS
 
 router = KNNDWS(task="classification", metric="log_loss", mode="min", k=20)
 router.fit(X_val, y_val, val_preds)

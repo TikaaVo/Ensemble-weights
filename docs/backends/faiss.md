@@ -57,7 +57,7 @@ not specified, capped at 4096.
 ## Example
 
 ```python
-from despy.des.knorau import KNORAU
+from deskit.des.knorau import KNORAU
 
 # Using a preset
 router = KNORAU(task="classification", metric="accuracy", mode="max", k=20, preset="balanced")

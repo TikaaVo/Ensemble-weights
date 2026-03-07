@@ -43,7 +43,7 @@ then those models survive and get equal weights, otherwise, k is decreased by 1 
 
 ## Example
 ```python
-from despy.des.knorae import KNORAE
+from deskit.des.knorae import KNORAE
 
 router = KNORAE(task="classification", metric="accuracy", mode="max", k=20)
 router.fit(X_val, y_val, val_preds)

@@ -1,6 +1,6 @@
-# despy
+# deskit
 
-despy is a flexible, light, and easy-to-use ensembling library that implements
+deskit is a flexible, light, and easy-to-use ensembling library that implements
 Dynamic Ensemble Selection (DES) algorithms for ensembling multiple ML models
 on a singular dataset.
 
@@ -9,7 +9,7 @@ along with pre-computed predictions and outputting a dictionary of weights
 per model. This means that it can be used with any library or model without
 requiring any wrappers, including custom models, popular ML libraries, and APIs.
 
-despy contains multiple different DES algorithms, and it works with both classification
+deskit contains multiple different DES algorithms, and it works with both classification
 and regression.
 
 ---
@@ -34,7 +34,7 @@ and when used on an ensemble of models with differing architectures and perspect
 
 ## Algorithms
 
-despy implements five DES algorithms. Each algorithm page covers how it works, when to use it,
+deskit implements five DES algorithms. Each algorithm page covers how it works, when to use it,
 and all accepted parameters.
 
 - [KNN-DWS](algorithms/knndws.md) — soft blending via distance-weighted softmax. General recommendation for regression.
@@ -47,7 +47,7 @@ and all accepted parameters.
 
 ## ANN Backends
 
-despy supports four nearest neighbour backends. Each backend page covers when to use it,
+deskit supports four nearest neighbour backends. Each backend page covers when to use it,
 available presets, and all configuration parameters.
 
 - [Exact KNN](backends/knn.md) — exact search via sklearn. No extra dependencies.
@@ -59,5 +59,5 @@ available presets, and all configuration parameters.
 
 ## Benchmark
 
-[Benchmark results](benchmark.md) across seven datasets comparing despy algorithms against
+[Benchmark results](benchmark.md) across seven datasets comparing deskit algorithms against
 simple averaging and the best single model in the pool.

@@ -59,7 +59,7 @@ Two backends are supported: `hnswlib` (default) and `nmslib`.
 ## Example
 
 ```python
-from despy.des.knorau import KNORAU
+from deskit.des.knorau import KNORAU
 
 # Using a preset
 router = KNORAU(task="classification", metric="accuracy", mode="max", k=20,

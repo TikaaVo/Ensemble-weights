@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "despy"
+name = "deskit"
 version = "0.1.0"
 description = "A Python library for Dynamic Ensemble Selection"
 readme = "README.md"
@@ -33,5 +33,5 @@ annoy = ["annoy>=1.17"]
 all   = ["scikit-learn>=1.0", "faiss-cpu>=1.7", "hnswlib>=0.7", "annoy>=1.17"]
 
 [project.urls]
-Homepage = "https://github.com/TikaaVo/despy"
-Repository = "https://github.com/TikaaVo/despy.git"
+Homepage = "https://github.com/TikaaVo/deskit"
+Repository = "https://github.com/TikaaVo/deskit.git"

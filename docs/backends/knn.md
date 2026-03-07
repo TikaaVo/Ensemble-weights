@@ -38,7 +38,7 @@ the exact k nearest neighbours.
 ## Example
 
 ```python
-from despy.des.knorau import KNORAU
+from deskit.des.knorau import KNORAU
 
 router = KNORAU(task="classification", metric="accuracy", mode="max", k=20, preset="exact")
 router.fit(X_val, y_val, val_preds)

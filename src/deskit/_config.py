@@ -3,8 +3,8 @@ Internal helpers shared across algorithm classes.
 Not part of the public API.
 """
 import numpy as np
-from despy.metrics import _METRICS, _PROB_METRICS, _SCALAR_METRICS
-from despy.utils import to_numpy
+from deskit.metrics import _METRICS, _PROB_METRICS, _SCALAR_METRICS
+from deskit.utils import to_numpy
 
 
 # ---------------------------------------------------------------------------
@@ -121,16 +121,16 @@ def make_finder(preset, k, finder=None, **kwargs):
         print(f"Using preset '{preset}': {config['description']}")
 
     if finder_type == 'knn':
-        from despy.neighbors import KNNNeighborFinder
+        from deskit.neighbors import KNNNeighborFinder
         return KNNNeighborFinder(**finder_kwargs)
     elif finder_type == 'faiss':
-        from despy.neighbors import FaissNeighborFinder
+        from deskit.neighbors import FaissNeighborFinder
         return FaissNeighborFinder(**finder_kwargs)
     elif finder_type == 'annoy':
-        from despy.neighbors import AnnoyNeighborFinder
+        from deskit.neighbors import AnnoyNeighborFinder
         return AnnoyNeighborFinder(**finder_kwargs)
     elif finder_type == 'hnsw':
-        from despy.neighbors import HNSWNeighborFinder
+        from deskit.neighbors import HNSWNeighborFinder
         return HNSWNeighborFinder(**finder_kwargs)
     else:
         raise ValueError(f"Unknown finder '{finder_type}'.")

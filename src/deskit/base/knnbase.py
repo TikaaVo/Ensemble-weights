@@ -1,4 +1,4 @@
-from despy.base.base import BaseRouter
+from deskit.base.base import BaseRouter
 import numpy as np
 
 
