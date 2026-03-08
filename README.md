@@ -121,11 +121,11 @@ weights = router.predict(X_test[i])
 
 | Method    | Best for | Notes                                                                                                    |
 |-----------|---|----------------------------------------------------------------------------------------------------------|
-| `DEWSU`  | Regression | Softmax over neighbourhood-averaged scores. Temperature controls sharpness.                              |
-| `DEWSI` | Regression | Like DEWS-U but scores are inverse-distance weighted.                                                   |
-| `KNORAU`  | Classification | Vote-count weighting. Each model earns one vote per neighbour it correctly classifies.                   |
-| `KNORAE`  | Classification | Intersection-based. Only models correct on all neighbours survive; falls back to smaller neighbourhoods. |
-| `KNORAIU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                    |
+| `DEWS-U`  | Regression | Softmax over neighbourhood-averaged scores. Temperature controls sharpness.                              |
+| `DEWS-I` | Regression | Like DEWS-U but scores are inverse-distance weighted.                                                   |
+| `KNORA-U`  | Classification | Vote-count weighting. Each model earns one vote per neighbour it correctly classifies.                   |
+| `KNORA-E`  | Classification | Intersection-based. Only models correct on all neighbours survive; falls back to smaller neighbourhoods. |
+| `KNORA-IU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                    |
 | `OLA`     | Both | Hard selection: only the single best model in the neighbourhood contributes.                             |
 
 ---
