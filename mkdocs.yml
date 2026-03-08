@@ -10,6 +10,10 @@ nav:
     - DEWS-U: algorithms/dewsu.md
     - DEWS-I: algorithms/dewsi.md
     - DEWS-T: algorithms/dewst.md
+    - DEWS-V: algorithms/dewsv.md
+    - DEWS-IV: algorithms/dewsiv.md
+    - LWSE-U: algorithms/lwseu.md
+    - LWSE-I: algorithms/lwsei.md
     - KNORA-U: algorithms/knorau.md
     - KNORA-E: algorithms/knorae.md
     - KNORA-IU: algorithms/knoraiu.md
@@ -19,4 +23,5 @@ nav:
     - FAISS: backends/faiss.md
     - Annoy: backends/annoy.md
     - HNSW: backends/hnsw.md
+  - Selection: selection.md
   - Benchmark: benchmark.md

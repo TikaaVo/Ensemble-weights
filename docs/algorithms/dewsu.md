@@ -9,7 +9,7 @@ compute a set of weights for the models.
 ## When to use
 
 - DEWS-U works best with soft metrics, so it was designed for regression. It also works for classification with confidence scores, 
-but not as well with hard predictions
+but not as well with hard predictions. However, for this purpose, DEWS-I is recommended, as it performs better on average.
 - It performs best when the competence regions and pool are smooth and heterogeneous
 - It performs worst for homogeneous datasets and for classification with hard predictions
 

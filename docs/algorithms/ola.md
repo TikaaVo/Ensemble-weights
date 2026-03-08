@@ -9,7 +9,7 @@ entire weight instead of ensembling multiple of them.
 
 - OLA is often used as a diagnostic tool or when one only wants to run the inference of a single model per test case to
 cut down computation
-- It performs best when the a single model is dramatically better than the others in a competence regions
+- It performs best when a single model is dramatically better than the others in a competence regions
 - It performs worst when throwing away most models and only keeping one loses accuracy
 
 ---

@@ -64,7 +64,7 @@ NumPy (>= 1.21)
 
 ## Quick start
 
-Full explanation of the algorithms, syntax, and parameters is available in the [documentation](https://TikaaVo.github.io/deskit/).
+For a more detailed understanding of how to use the library, consult the [documentation](https://TikaaVo.github.io/deskit/).
 
 ```python
 from deskit.des.knorau  import KNORAU
@@ -119,15 +119,22 @@ weights = router.predict(X_test[i])
 
 ## Algorithms
 
-| Method     | Best for       | Notes                                                                                                |
-|------------|----------------|------------------------------------------------------------------------------------------------------|
-| `DEWS-U`   | Regression     | Softmax over neighborhood-averaged scores. Temperature controls sharpness.                           |
-| `DEWS-I`   | Regression     | Like DEWS-U but scores are inverse-distance weighted.                                                |
-| `DEWS-T`   | Both           | Like DEWS-U but fits a weighted trend line over neighbor scores and extrapolates to the test point.  |
-| `KNORA-U`  | Classification | Vote-count weighting. Each model earns one vote per neighbor it correctly classifies.                |
-| `KNORA-E`  | Classification | Intersection-based. Only models correct on all neighbors survive; falls back to smaller neighborhoods. |
-| `KNORA-IU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                |
-| `OLA`      | Both           | Hard selection: only the single best model in the neighborhood contributes.                          |
+Full explanation of the algorithms, syntax, and parameters is available in the [documentation](https://TikaaVo.github.io/deskit/).
+If you're struggling to decide on which algorithm to use, see the [algorithm selection guide](https://TikaaVo.github.io/deskit/selection).
+
+| Method     | Best for       | Notes                                                                                                  |
+|------------|----------------|--------------------------------------------------------------------------------------------------------|
+| `DEWS-U`   | Regression     | Softmax over neighborhood-averaged scores. Temperature controls sharpness.                             |
+| `DEWS-I`   | Regression     | Like DEWS-U but scores are inverse-distance weighted.                                                  |
+| `DEWS-T`   | Both           | Like DEWS-I but fits a weighted trend line over neighbor scores.                                       |
+| `DEWS-V`   | Regression     | Like DEWS-U but scores are variance-penalized.                                                                             |
+| `DEWS-IV`  | Regression     | Like DEWS-V but scores are also inverse-distance weighted.                                             |
+| `LWSE-U`   | Both           | Per-sample NNLS weight estimation over the local neighbourhood.                                        |
+| `LWSE-I`   | Both           | Like LWSE-U but rows are inverse-distance weighted.                                                    |
+| `KNORA-U`  | Classification | Each model earns one vote per neighbor it correctly classifies.                  |
+| `KNORA-E`  | Classification | Only models correct on all neighbors survive; falls back to smaller neighborhoods. |
+| `KNORA-IU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                  |
+| `OLA`      | Both           | Hard selection: only the single best model in the neighborhood contributes.                            |
 
 ---
 
@@ -188,22 +195,22 @@ passed features either need to be run through a feature extractor beforehand, su
 
 ## Benchmark results
 
-100-seed benchmark (seeds 0–99) on standard sklearn and OpenML datasets. "Best Single" is the best
+20-seed benchmark (seeds 0–19) on standard sklearn and OpenML datasets. "Best Single" is the best
 individual model selected on the validation set. "Simple Average" is uniform
 equal-weight blending, included as a baseline.
 
 It is important to consider that these experiments were run with the default hyperparameters, meaning that
 they could vary greatly with different values, and results could improve with tuning.
-For a more detailed benchmark breakdown, see the [documentation](https://TikaaVo.github.io/deskit/).
+For a more detailed benchmark breakdown, see the [benchmark in the documentation](https://TikaaVo.github.io/deskit/benchmark).
 To see the full results, see `results.txt` in the `tests` folder.
-
-Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
 This pool was selected for having variability in architectures while avoiding a single dominant model.
 
-deskit algorithms tested: OLA, DEWS-U, DEWS-I, DEWS-T, KNORA-U, KNORA-E, KNORA-IU.
+deskit algorithms tested: OLA, DEWS-U, DEWS-I, DEWS-T, DEWS-V, DEWS-IV, LWSE-U, LWSE-I, KNORA-U, KNORA-E, KNORA-IU.
 
 ### Regression (MAE, lower is better)
+
+Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
 % shown as delta vs Best Single. 20-seed mean.
 
@@ -212,50 +219,52 @@ deskit algorithms tested: OLA, DEWS-U, DEWS-I, DEWS-T, KNORA-U, KNORA-E, KNORA-I
 | California Housing (sklearn) | 0.3956      | +7.99%     | **−2.54%** (DEWS-I)       |
 | Bike Sharing (OpenML)        | 51.678      | +47.77%    | **−6.86%** (DEWS-I)       |
 | Abalone (OpenML)             | **1.4981**  | +1.14%     | +1.47% (KNORA-U/KNORA-IU) |
-| Diabetes (sklearn)           | **44.504**  | +3.18%     | +1.09% (DEWS-I/DEWS-T)    |
-| Concrete Strength (OpenML)   | 5.2686      | +23.66%    | **−1.20%** (DEWS-I)       |
+| Diabetes (sklearn)           | **44.504**  | +3.18%     | +0.86% (DEWS-IV)          |
+| Concrete Strength (OpenML)   | 5.2686      | +23.66%    | **−5.41%** (LWSE-I)       |
 
 deskit beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
 strong boost if used on the right dataset, but it might be counterproductive if used blindly.
 
 KNORA variants are designed for classification, which explains the poor performance
-on regression datasets; However, some exception can occur in certain datasets, either where
-feature space has hard clusters (like in Concrete Strength) or when the target is discrete
+on regression datasets; However, some exceptions can occur in certain datasets when the target is discrete
 and classification-like (like in Abalone).
+
+DEWS-I and LWSE-I show the largest improvements on their respective datasets.
 
 ### Classification (Accuracy, higher is better)
 
+Pool: KNN, Decision Tree, Gaussian NB, SVM-RBF, Logistic Regression.
+
 % shown as delta vs Best Single. 20-seed mean.
 
-| Dataset                | Best Single | Simple Avg | deskit best              |
-|------------------------|-------------|------------|--------------------------|
-| HAR (OpenML)           | 98.24%      | −0.33%     | **+0.16%** (DEWS-T)      |
-| Yeast (OpenML)         | 58.87%      | +0.77%     | **+1.66%** (KNORA-IU)    |
-| Image Segment (OpenML) | 93.70%      | +1.40%     | **+2.25%** (DEWS-T)      |
-| Waveform (OpenML)      | **85.91%**  | −0.98%     | −0.39% (DEWS-T)          |
-| Vowel (OpenML)         | 89.95%      | −2.05%     | **+0.93%** (KNORA-IU)    |
+| Dataset                | Best Single | Simple Avg | deskit best                    |
+|------------------------|-------------|------------|--------------------------------|
+| HAR (OpenML)           | 98.24%      | −0.33%     | **+0.16%** (DEWS-T)            |
+| Yeast (OpenML)         | 58.87%      | +0.77%     | **+1.66%** (KNORA-IU)          |
+| Image Segment (OpenML) | 93.70%      | +1.40%     | **+2.25%** (DEWS-T / DEWS-IV)  |
+| Waveform (OpenML)      | **85.91%**  | −0.98%     | −0.39% (DEWS-T)                |
+| Vowel (OpenML)         | 89.95%      | −2.05%     | **+2.95%** (LWSE-I)            |
 
-deskit beats or matches best single and simple averaging on 4/5 classification datasets. As seen on regression, DES
-can improve or hurt performance, so it must be used wisely, but if used correctly it can show promising results.
+deskit beats or matches best single and simple averaging on 4/5 classification datasets.
 
 ### Speed (mean ms fit + predict, 20 seeds, all tested algorithms combined)
 
-Consider that usually it is recommended to only use one algorithm at a time, this benchmark ran six of them at the
-same time, so with a single one runtime is expected to be about 6x faster. For this benchmark, `preset='balanced'` was used,
+Consider that usually it is recommended to only use one algorithm at a time, this benchmark ran eleven of them at the
+same time, so with a single one runtime is expected to be about 11x faster. For this benchmark, `preset='balanced'` was used,
 so the backend was an ANN algorithm with FAISS IVF.
 
-| Dataset            | deskit    |
-|--------------------|-----------|
-| California Housing | 159.8 ms  |
-| Bike Sharing       | 130.3 ms  |
-| Abalone            | 32.9 ms   |
-| Diabetes           | 8.2 ms    |
-| Conrete Strength   | 10.8 ms   |
-| HAR                | 352.0 ms  |
-| Yeast              | 18.6 ms   |
-| Image Segment      | 32.4 ms   |
-| Waveform           | 58.7 ms   |
-| Vowel              | 19.6 ms   |
+| Dataset            | deskit (11 algorithms) |
+|--------------------|------------------------|
+| California Housing | 351.0 ms               |
+| Bike Sharing       | 283.5 ms               |
+| Abalone            | 72.9 ms                |
+| Diabetes           | 14.0 ms                |
+| Concrete Strength  | 22.5 ms                |
+| HAR                | 693.1 ms               |
+| Yeast              | 44.7 ms                |
+| Image Segment      | 69.9 ms                |
+| Waveform           | 124.5 ms               |
+| Vowel              | 39.0 ms                |
 
 deskit caches all model predictions on the validation set at fit time and reads
 from that matrix at inference.

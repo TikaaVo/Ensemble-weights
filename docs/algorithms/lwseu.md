@@ -1,0 +1,73 @@
+# LWSE-U
+
+LWSE-U is a dynamic, per-sample stacking algorithm that uses NNLS, designed for both classification and regression tasks. 
+It uses NNLS (Non-Negative Least Squares) to stack models locally for every test case and uses those weights 
+to ensemble the models.
+
+For classification, only confidence scores can be used.
+
+---
+
+## When to use
+
+- LWSE-U was designed to be an algorithm that can perform very well in certain cases, improving effectiveness
+by a large margin, but it can be inconsistent for general use. However, for this purpose, LWSE-I is recommended, as it 
+performs better on average.
+- LWSE-U performs best with heterogeneous model pools and datasets with strong local structure.
+- LWSE-U performs worst when datasets have one uniformly dominant model, sparse class distributions
+with small k or in high dimensional datasets
+- LWSE-U is also heavier than most other DES algorithms, and while it usually isn't an issue, it scales with
+k and the amount of models, so if both of those are large it can add computational costs
+
+---
+
+## How it works
+
+When `fit` is called, LWSE-U fits a KNN algorithm on the validation data and builds a prediction matrix.
+
+When `predict` is called, it finds the K nearest neighbors from the test point. Afterwards, the local system is built
+and NNLS is solved on the system. Finally, the coefficients are divided by the sum to normalize them into weights. 
+If the solver returns all zeros, weights fall back to being uniform.
+
+---
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `task` | str | — | `"classification"` or `"regression"` |
+| `k` | int | 10 | Number of neighbours. Higher k gives more stable fits but reduces locality. |
+| `preset` | str | `"balanced"` | ANN backend preset. See `list_presets()`. |
+
+LWSE-U has no `metric`, `mode`, `threshold`, or `temperature` parameters. The objective is
+always local squared error, non-negativity is enforced by the solver, and sparsity emerges
+naturally from the NNLS solution.
+
+---
+
+## Example
+
+```python
+# Regression
+from deskit.des.lwseu import LWSEU
+
+router = LWSEU(task="regression", k=20)
+router.fit(X_val, y_val, val_preds)
+weights = router.predict(x)
+```
+
+```python
+# Classification
+from deskit.des.lwseu import LWSEU
+
+router = LWSEU(task="classification", k=10)
+router.fit(X_val, y_val, val_preds)
+weights = router.predict(x)
+```
+
+---
+
+## Notes
+
+LWSE-U does not use a metric or a gate threshold. Whether a model contributes at a given test
+point is decided entirely by whether it reduces local squared error.

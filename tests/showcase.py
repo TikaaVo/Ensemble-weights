@@ -5,24 +5,18 @@ deskit Showcase
 Pool design
 
   Regression
-    KNN (k=5)         — purely local; wins in dense low-noise regions,
-                         fails on sparse or high-dimensional spaces
-    Decision Tree     — axis-aligned splits; wins in piecewise-constant regions,
-                         fails near smooth or diagonal relationships
-    SVR (rbf)         — kernel margins; wins near smooth continuous boundaries,
-                         fails on large well-separated clusters
-    Ridge             — linear; wins on globally linear relationships,
-                         fails on any nonlinear structure
-    Bayesian Ridge    — probabilistic linear with automatic regularisation;
-                         wins on well-behaved Gaussian data
+    -KNN (k=5)
+    -Decision Tree
+    -SVR (rbf)
+    -Ridge
+    -Bayesian Ridge
 
   Classification pool
-    KNN (k=5)         — purely local; wins in dense low-noise regions
-    Decision Tree     — axis-aligned rules; wins in piecewise-constant regions
-    Gaussian NB       — feature independence assumption; wins when features are
-                         roughly Gaussian and separable
-    SVM-RBF           — kernel margins; wins near tight decision boundaries
-    Logistic Reg      — linear; wins on linearly separable regions
+    -KNN (k=5)
+    -Decision Tree
+    -Gaussian NB
+    -SVM-RBF
+    -Logistic Reg
 
 Regression datasets
   California Housing  sklearn built-in,  20,640 samples,  8 features
@@ -60,6 +54,10 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from deskit.des.dewsu  import DEWSU
 from deskit.des.dewsi  import DEWSI
 from deskit.des.dewst  import DEWST
+from deskit.des.dewsv  import DEWSV
+from deskit.des.dewsiv import DEWSIV
+from deskit.des.lwseu  import LWSEU
+from deskit.des.lwsei  import LWSEI
 from deskit.des.ola     import OLA
 from deskit.des.knorau  import KNORAU
 from deskit.des.knorae  import KNORAE
@@ -83,10 +81,13 @@ try:
     from deslib.des.knora_u  import KNORAU  as DL_KNORAU
     from deslib.des.knora_e  import KNORAE  as DL_KNORAE
     from deslib.dcs.ola      import OLA     as DL_OLA
+    from deslib.dcs.lca      import LCA     as DL_LCA
+    from deslib.dcs.mcb      import MCB     as DL_MCB
     from deslib.des.meta_des import METADES as DL_METADES
     from deslib.des.knop     import KNOP    as DL_KNOP
     from deslib.des.des_p    import DESP    as DL_DESP
     from deslib.des.des_knn  import DESKNN  as DL_DESKNN
+    from deslib.des.des_mi   import DESMI   as DL_DESMI
     DESLIB_AVAILABLE = True
 except ImportError:
     DESLIB_AVAILABLE = False
@@ -111,6 +112,10 @@ THRESHOLDS_REG = {
     'DEWS-U':   0.5,
     'DEWS-I':   0.5,
     'dews-t':   0.5,
+    'dews-v':   0.5,
+    'dews-iv':  0.5,
+    'lwse-u':    0.5,
+    'lwse-i':    0.5,
     'ola':       0.5,
     'knora-u':   1.0,
     'knora-e':   1.0,
@@ -120,18 +125,26 @@ THRESHOLDS_CLF = {
     'DEWS-U':   0.5,
     'DEWS-I':   0.5,
     'dews-t':   0.5,
+    'dews-v':   0.5,
+    'dews-iv':  0.5,
+    'lwse-u':    0.5,
+    'lwse-i':    0.5,
     'ola':       0.5,
     'knora-u':   0.5,
     'knora-e':   0.5,
     'knora-iu':  0.5,
 }
 
-DES_METHODS = ['DEWS-U', 'DEWS-I', 'dews-t', 'ola', 'knora-u', 'knora-e', 'knora-iu']
+DES_METHODS = ['DEWS-U', 'DEWS-I', 'dews-t', 'dews-v', 'dews-iv', 'lwse-u', 'lwse-i', 'ola', 'knora-u', 'knora-e', 'knora-iu']
 
 _DES_CLASSES = {
     'DEWS-U':   DEWSU,
     'DEWS-I':   DEWSI,
     'dews-t':   DEWST,
+    'dews-v':   DEWSV,
+    'dews-iv':  DEWSIV,
+    'lwse-u':    LWSEU,
+    'lwse-i':    LWSEI,
     'ola':       OLA,
     'knora-u':   KNORAU,
     'knora-e':   KNORAE,
@@ -139,7 +152,7 @@ _DES_CLASSES = {
 }
 
 # DESlib algorithms
-DL_METHODS = ['KNORA-U', 'KNORA-E', 'OLA', 'META-DES', 'KNOP', 'DESP', 'DESKNN']
+DL_METHODS = ['KNORA-U', 'KNORA-E', 'OLA', 'LCA', 'MCB', 'META-DES', 'KNOP', 'DESP', 'DESKNN', 'DES-MI']
 
 # DESReg modes
 DR_METHODS = ['DES', 'DSR']
@@ -148,7 +161,7 @@ DR_METHODS = ['DES', 'DSR']
 # Display
 
 def banner():
-    dl_status = ('installed — 7 algorithms: KNORA-U/E · OLA · META-DES · KNOP · DESP · DESKNN'
+    dl_status = ('installed — 10 algorithms: KNORA-U/E · OLA · LCA · MCB · META-DES · KNOP · DESP · DESKNN · DES-MI'
                  if DESLIB_AVAILABLE
                  else 'not installed (pip install deslib) — skipping comparison')
     dr_status = ('installed — head-to-head comparison on regression'
@@ -162,7 +175,7 @@ def banner():
     print()
     print("  Best Single       best val-set model applied to test set everywhere")
     print("  Simple Average    uniform equal-weight blend of all models (no tuning)")
-    print("  deskit             DEWS-U · DEWS-I · OLA · KNORA-U · KNORA-E · KNORA-IU")
+    print("  deskit             DEWS-U · DEWS-I · DEWS-T · DEWS-V · DEWS-IV · LWSE-U · LWSE-I · OLA · KNORA-U · KNORA-E · KNORA-IU")
     print(f"  DESlib            {dl_status}")
     print(f"  DESReg            {dr_status}")
     print()
@@ -428,6 +441,10 @@ def load_waveform():
 
 def _make_router(task, method, metric, mode, k, preset='balanced'):
     """Instantiate a deskit algorithm class, suppressing the preset print."""
+    if method in ('lwse-u', 'lwse-i'):
+        cls = LWSEU if method == 'lwse-u' else LWSEI
+        with contextlib.redirect_stdout(io.StringIO()):
+            return cls(task=task, k=k, preset=preset)
     kwargs = dict(task=task, metric=metric, mode=mode, k=k, preset=preset)
     if method == 'dews-t':
         kwargs['r2_threshold'] = R2_THRESHOLD
@@ -505,10 +522,13 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
         ('KNORA-U',  DL_KNORAU),
         ('KNORA-E',  DL_KNORAE),
         ('OLA',      DL_OLA),
+        ('LCA',      DL_LCA),
+        ('MCB',      DL_MCB),
         ('META-DES', DL_METADES),
         ('KNOP',     DL_KNOP),
         ('DESP',     DL_DESP),
         ('DESKNN',   DL_DESKNN),
+        ('DES-MI',   DL_DESMI),
     ]
     for dl_label, cls in _dl_registry:
         try:
@@ -540,6 +560,10 @@ def _label_reg(method):
         'DEWS-U':  f'deskit DEWS-U   (gate={THRESHOLDS_REG["DEWS-U"]}, T={TEMP_REG})',
         'DEWS-I':  f'deskit DEWS-I   (gate={THRESHOLDS_REG["DEWS-I"]}, T={TEMP_REG})',
         'dews-t':  f'deskit DEWS-T   (gate={THRESHOLDS_REG["dews-t"]}, T={TEMP_REG}, R²≥{R2_THRESHOLD})',
+        'dews-v':  f'deskit DEWS-V   (gate={THRESHOLDS_REG["dews-v"]}, T={TEMP_REG})',
+        'dews-iv': f'deskit DEWS-IV  (gate={THRESHOLDS_REG["dews-iv"]}, T={TEMP_REG})',
+        'lwse-u':    'deskit LWSE-U',
+        'lwse-i':    'deskit LWSE-I',
         'ola':       'deskit OLA',
         'knora-u':  f'deskit KNORA-U  (th={THRESHOLDS_REG["knora-u"]})',
         'knora-e':  f'deskit KNORA-E  (th={THRESHOLDS_REG["knora-e"]})',
@@ -552,6 +576,10 @@ def _label_clf(method):
         'DEWS-U':  f'deskit DEWS-U   (gate={THRESHOLDS_CLF["DEWS-U"]}, T={TEMP_CLF})',
         'DEWS-I':  f'deskit DEWS-I   (gate={THRESHOLDS_CLF["DEWS-I"]}, T={TEMP_CLF})',
         'dews-t':  f'deskit DEWS-T   (gate={THRESHOLDS_CLF["dews-t"]}, T={TEMP_CLF}, R²≥{R2_THRESHOLD})',
+        'dews-v':  f'deskit DEWS-V   (gate={THRESHOLDS_CLF["dews-v"]}, T={TEMP_CLF})',
+        'dews-iv': f'deskit DEWS-IV  (gate={THRESHOLDS_CLF["dews-iv"]}, T={TEMP_CLF})',
+        'lwse-u':    'deskit LWSE-U',
+        'lwse-i':    'deskit LWSE-I',
         'ola':       'deskit OLA',
         'knora-u':  f'deskit KNORA-U  (th={THRESHOLDS_CLF["knora-u"]})',
         'knora-e':  f'deskit KNORA-E  (th={THRESHOLDS_CLF["knora-e"]})',
