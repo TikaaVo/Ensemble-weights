@@ -873,7 +873,7 @@
   <span class="md-ellipsis">
     
   
-    Selection
+    Algorithm Selection Guide
   
 
     
@@ -1028,19 +1028,21 @@ heterogeneous datasets, as well as non-stationary data (concept drift), models t
 and when used on an ensemble of models with differing architectures and perspectives.</p>
 <hr />
 <h2 id="algorithms">Algorithms</h2>
-<p>deskit implements five DES algorithms. Each algorithm page covers how it works, when to use it,
+<p>deskit implements multiple DES algorithms. Each algorithm page covers how it works, when to use it,
 and all accepted parameters. </p>
-<p>For selecting the best algorithm for your task:
-- <a href="selection/">Algorithm selection guide</a></p>
+<p>For selecting the best algorithm for your task:</p>
+<ul>
+<li><a href="selection/">Algorithm selection guide</a></li>
+</ul>
 <p>Algorithm list:</p>
 <ul>
 <li><a href="algorithms/dewsu/">DEWS-U</a> — soft blending via distance-weighted softmax. </li>
 <li><a href="algorithms/dewsi/">DEWS-I</a> — Like DEWS-U but scores are inverse-distance weighted. General recommendation for regression.</li>
-<li><a href="algorithms/dewst/">DEWS-T</a> Like DEWS-I but fits a weighted trend line over neighbor scores.</li>
-<li><a href="algorithms/dewsv/">DEWS-V</a> Like DEWS-U but scores are variance-penalized.</li>
-<li><a href="algorithms/dewsiv/">DEWS-IV</a> Like DEWS-V but scores are also inverse-distance weighted.   </li>
-<li><a href="algorithms/lwseu/">LWSE-U</a> Per-sample NNLS weight estimation over the local neighbourhood.</li>
-<li><a href="algorithms/lwsei/">LWSE-I</a> Like LWSE-U but rows are inverse-distance weighted.   </li>
+<li><a href="algorithms/dewst/">DEWS-T</a> — Like DEWS-I but fits a weighted trend line over neighbor scores.</li>
+<li><a href="algorithms/dewsv/">DEWS-V</a> — Like DEWS-U but scores are variance-penalized.</li>
+<li><a href="algorithms/dewsiv/">DEWS-IV</a> — Like DEWS-V but scores are also inverse-distance weighted.   </li>
+<li><a href="algorithms/lwseu/">LWSE-U</a> — Per-sample NNLS weight estimation over the local neighbourhood.</li>
+<li><a href="algorithms/lwsei/">LWSE-I</a> — Like LWSE-U but rows are inverse-distance weighted.   </li>
 <li><a href="algorithms/knorau/">KNORA-U</a> — vote-count weighting. Safe default for classification.</li>
 <li><a href="algorithms/knorae/">KNORA-E</a> — intersection-based. Best when models have clear regional dominance.</li>
 <li><a href="algorithms/knoraiu/">KNORA-IU</a> — like KNORA-U with inverse-distance weighted votes.</li>
