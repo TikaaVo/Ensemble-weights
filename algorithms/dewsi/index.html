@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://TikaaVo.github.io/deskit/algorithms/knndws/">
+        <link rel="canonical" href="https://TikaaVo.github.io/deskit/algorithms/dewsi/">
       
       
-        <link rel="prev" href="../..">
+        <link rel="prev" href="../dewsu/">
       
       
-        <link rel="next" href="../knndwsi/">
+        <link rel="next" href="../knorau/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>KNN-DWS - deskit</title>
+        <title>DEWS-I - deskit</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#knn-dws" class="md-skip">
+        <a href="#dews-i" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              KNN-DWS
+              DEWS-I
             
           </span>
         </div>
@@ -295,6 +295,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../dewsu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DEWS-U
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -314,7 +342,7 @@
   <span class="md-ellipsis">
     
   
-    KNN-DWS
+    DEWS-I
   
 
     
@@ -332,7 +360,7 @@
   <span class="md-ellipsis">
     
   
-    KNN-DWS
+    DEWS-I
   
 
     
@@ -416,34 +444,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../knndwsi/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    KNN-DWS-I
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -862,25 +862,25 @@
   
 
 
-<h1 id="knn-dws">KNN-DWS</h1>
+<h1 id="dews-i">DEWS-I</h1>
 <p>This algorithm is designed to be consistent and flexible for both classification and
-regression tasks. It uses soft blending between the top experts in a certain competence region to
-compute a set of weights for the models.</p>
+regression tasks and is a variation of DEWS-U that takes neighbor distance into consideration.
+It uses soft blending between the top experts in a certain competence region to compute a set of weights for the models.</p>
 <hr />
 <h2 id="when-to-use">When to use</h2>
 <ul>
-<li>KNN-DWS works best with soft metrics, so it was designed for regression. It also works for classification with confidence scores, 
-but not as well with hard predictions</li>
+<li>DEWS-I is currently the general recommendation for regression tasks. DEWS-I works best with soft metrics, 
+so it also works for classification with confidence scores, but not as well with hard predictions</li>
 <li>It performs best when the competence regions and pool are smooth and heterogeneous</li>
 <li>It performs worst for homogeneous datasets and for classification with hard predictions</li>
 </ul>
 <hr />
 <h2 id="how-it-works">How it works</h2>
-<p>When <code>fit</code> is called, KNN-DWS fits a KNN algorithm on the validation data and builds a criterion score matrix. 
-When <code>predict</code> is called, it finds the K nearest neighbors from the test point and uses the score matrix to average
-every models' scores over the K neighbors. Afterwards, it normalizes the average scores using min-max normalization and
-removes the models under a threshold. Finally, it takes the remaining models and creates weights with their scores using
-softmax with temperature.</p>
+<p>When <code>fit</code> is called, DEWS-I fits a KNN algorithm on the validation data and builds a criterion score matrix. 
+When <code>predict</code> is called, it finds the K nearest neighbors from the test point and uses the score matrix to combine
+every models' scores over the K neighbors with inverse-distance weights. Afterwards, it normalizes the average scores 
+using min-max normalization and removes the models under a threshold. Finally, it takes the remaining models 
+and creates weights with their scores using softmax with temperature.</p>
 <hr />
 <h2 id="parameters">Parameters</h2>
 <table>
@@ -946,16 +946,16 @@ softmax with temperature.</p>
 <hr />
 <h2 id="example">Example</h2>
 <pre><code class="language-python"># Regression
-from deskit.des.knndsw import KNNDWS
+from deskit.des.dewsi import DEWSI
 
-router = KNNDWS(task=&quot;regression&quot;, metric=&quot;mae&quot;, mode=&quot;min&quot;, k=20)
+router = DEWSI(task=&quot;regression&quot;, metric=&quot;mae&quot;, mode=&quot;min&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
 weights = router.predict(x)
 </code></pre>
 <pre><code class="language-python"># Classification
-from deskit.des.knndsw import KNNDWS
+from deskit.des.dewsi import DEWSI
 
-router = KNNDWS(task=&quot;classification&quot;, metric=&quot;log_loss&quot;, mode=&quot;min&quot;, k=20)
+router = DEWSI(task=&quot;classification&quot;, metric=&quot;log_loss&quot;, mode=&quot;min&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
 weights = router.predict(x)
 </code></pre>

@@ -2,50 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://TikaaVo.github.io/deskit/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/benchmark/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
-         <loc>https://TikaaVo.github.io/deskit/algorithms/knndws/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <loc>https://TikaaVo.github.io/deskit/algorithms/dewsi/</loc>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
-         <loc>https://TikaaVo.github.io/deskit/algorithms/knndwsi/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <loc>https://TikaaVo.github.io/deskit/algorithms/dewsu/</loc>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/algorithms/knorae/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/algorithms/knoraiu/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/algorithms/knorau/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/algorithms/ola/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/backends/annoy/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/backends/faiss/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/backends/hnsw/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
     <url>
          <loc>https://TikaaVo.github.io/deskit/backends/knn/</loc>
-         <lastmod>2026-03-07</lastmod>
+         <lastmod>2026-03-08</lastmod>
     </url>
 </urlset>
