@@ -10,6 +10,7 @@ regression if the target value is classification-like, so it's usually contained
 but it is not usually recommended.
 
 For general-purpose, plug-and-play regression tasks, use one of the following algorithms:
+
 - [DEWS-I](algorithms/dewsi.md): simple and consistent. Best on smooth and heterogeneous datasets and pools.
 - [DEWS-T](algorithms/dewst.md): it can get more performance than DEWS-I, but is less
 consistent. Tune the r2 threshold parameter to match DEWS-I more or less closely. Best on regions with directional structure,
@@ -20,6 +21,7 @@ computation.
 
 If you want to get potentially better results and don't mind trying multiple algorithms, analyzing your dataset more in depth,
 and/or tuning hyperparameters, consider the following alongside the previous ones:
+
 - [LWSE-I](algorithms/lwsei.md): has the potential to improve performance drastically, but is less consistent than
 the previous ones. Best when a dataset has clear local structure and with larger values of k. It is more computationally
 expensive than the other algorithms
@@ -32,6 +34,7 @@ Most regression algorithms can work for classification tasks, although many requ
 raw predictions. On top of the algorithms mentioned in the regression section, KNORA variants are better for classification.
 
 For general-purpose, plug-and-play classification tasks, use one of the following algorithms:
+
 - [DEWS-T](algorithms/dewst.md): for classification, this algorithm is safe and more consistent than for regression, usually
 matching or beating DEWS-I. However, the threshold parameter should still be held high. Best on regions with directional structure,
 so a models performance linearly increases or decreases when approaching certain regions.
@@ -43,6 +46,7 @@ computation.
 
 If you want to get potentially better results and don't mind trying multiple algorithms, analyzing your dataset more in depth,
 and/or tuning hyperparameters, consider the following alongside the previous ones:
+
 - [LWSE-I](algorithms/lwsei.md): has the potential to improve performance drastically, but is less consistent than
 the previous ones. Best when a dataset has clear local structure and with larger values of k. It is more computationally
 expensive than the other algorithms
