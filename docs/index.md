@@ -44,11 +44,11 @@ Algorithm list:
 
 - [DEWS-U](algorithms/dewsu.md) — soft blending via distance-weighted softmax. 
 - [DEWS-I](algorithms/dewsi.md) — Like DEWS-U but scores are inverse-distance weighted. General recommendation for regression.
-- [DEWS-T](algorithms/dewst.md) Like DEWS-I but fits a weighted trend line over neighbor scores.
-- [DEWS-V](algorithms/dewsv.md) Like DEWS-U but scores are variance-penalized.
-- [DEWS-IV](algorithms/dewsiv.md) Like DEWS-V but scores are also inverse-distance weighted.   
-- [LWSE-U](algorithms/lwseu.md) Per-sample NNLS weight estimation over the local neighbourhood.
-- [LWSE-I](algorithms/lwsei.md) Like LWSE-U but rows are inverse-distance weighted.   
+- [DEWS-T](algorithms/dewst.md) — Like DEWS-I but fits a weighted trend line over neighbor scores.
+- [DEWS-V](algorithms/dewsv.md) — Like DEWS-U but scores are variance-penalized.
+- [DEWS-IV](algorithms/dewsiv.md) — Like DEWS-V but scores are also inverse-distance weighted.   
+- [LWSE-U](algorithms/lwseu.md) — Per-sample NNLS weight estimation over the local neighbourhood.
+- [LWSE-I](algorithms/lwsei.md) — Like LWSE-U but rows are inverse-distance weighted.   
 - [KNORA-U](algorithms/knorau.md) — vote-count weighting. Safe default for classification.
 - [KNORA-E](algorithms/knorae.md) — intersection-based. Best when models have clear regional dominance.
 - [KNORA-IU](algorithms/knoraiu.md) — like KNORA-U with inverse-distance weighted votes.
