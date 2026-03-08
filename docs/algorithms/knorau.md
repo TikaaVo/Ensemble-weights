@@ -17,6 +17,7 @@ many correct predictions were made.
 ## How it works
 
 When `fit` is called, KNORA-U fits a KNN algorithm on the validation data and builds a criterion score matrix. 
+
 When `predict` is called, it finds the K nearest neighbors from the test point and for normalizes the model scores
 for every neighbor with min-max normalization. If all models scored identically, they all get `1.0`. For each model, the amount of neighbors where its score
 exceeded the threshold (in classification, this would mean that the predictions were correct) is that model's vote total.

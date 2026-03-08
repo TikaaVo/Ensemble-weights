@@ -18,6 +18,7 @@ to be used a discrete metric, usually `accuracy`
 ## How it works
 
 When `fit` is called, KNORA-E fits a KNN algorithm on the validation data and builds a criterion score matrix. 
+
 When `predict` is called, it finds the K nearest neighbors from the test point and for normalizes the model scores
 for every neighbor with min-max normalization. If all models scored identically, they all get `1.0`. If there is are models that 
 exceeds the threshold for every neighbor case (for classification, this would mean that the model gets all of the neighbors correct),

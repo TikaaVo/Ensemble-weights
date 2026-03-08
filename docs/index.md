@@ -39,6 +39,7 @@ and all accepted parameters.
 
 - [DEWS-U](algorithms/dewsu.md) — soft blending via distance-weighted softmax. 
 - [DEWS-I](algorithms/dewsi.md) — Like DEWS-U but scores are inverse-distance weighted. General recommendation for regression.
+- [DEWS-T](algorithms/dewst.md) Like DEWS-U but fits a weighted trend line over neighbor scores and extrapolates to the test point.
 - [KNORA-U](algorithms/knorau.md) — vote-count weighting. Safe default for classification.
 - [KNORA-E](algorithms/knorae.md) — intersection-based. Best when models have clear regional dominance.
 - [KNORA-IU](algorithms/knoraiu.md) — like KNORA-U with inverse-distance weighted votes.

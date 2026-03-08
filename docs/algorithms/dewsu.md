@@ -18,6 +18,7 @@ but not as well with hard predictions
 ## How it works
 
 When `fit` is called, DEWS-U fits a KNN algorithm on the validation data and builds a criterion score matrix. 
+
 When `predict` is called, it finds the K nearest neighbors from the test point and uses the score matrix to average
 every models' scores over the K neighbors. Afterwards, it normalizes the average scores using min-max normalization and
 removes the models under a threshold. Finally, it takes the remaining models and creates weights with their scores using

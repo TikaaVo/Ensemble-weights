@@ -119,14 +119,15 @@ weights = router.predict(X_test[i])
 
 ## Algorithms
 
-| Method    | Best for | Notes                                                                                                    |
-|-----------|---|----------------------------------------------------------------------------------------------------------|
-| `DEWS-U`  | Regression | Softmax over neighbourhood-averaged scores. Temperature controls sharpness.                              |
-| `DEWS-I` | Regression | Like DEWS-U but scores are inverse-distance weighted.                                                   |
-| `KNORA-U`  | Classification | Vote-count weighting. Each model earns one vote per neighbour it correctly classifies.                   |
-| `KNORA-E`  | Classification | Intersection-based. Only models correct on all neighbours survive; falls back to smaller neighbourhoods. |
-| `KNORA-IU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                    |
-| `OLA`     | Both | Hard selection: only the single best model in the neighbourhood contributes.                             |
+| Method     | Best for       | Notes                                                                                                |
+|------------|----------------|------------------------------------------------------------------------------------------------------|
+| `DEWS-U`   | Regression     | Softmax over neighborhood-averaged scores. Temperature controls sharpness.                           |
+| `DEWS-I`   | Regression     | Like DEWS-U but scores are inverse-distance weighted.                                                |
+| `DEWS-T`   | Both           | Like DEWS-U but fits a weighted trend line over neighbor scores and extrapolates to the test point.  |
+| `KNORA-U`  | Classification | Vote-count weighting. Each model earns one vote per neighbor it correctly classifies.                |
+| `KNORA-E`  | Classification | Intersection-based. Only models correct on all neighbors survive; falls back to smaller neighborhoods. |
+| `KNORA-IU` | Classification | Like KNORA-U but votes are inverse-distance weighted.                                                |
+| `OLA`      | Both           | Hard selection: only the single best model in the neighborhood contributes.                          |
 
 ---
 
@@ -200,39 +201,39 @@ Pool: KNN, Decision Tree, SVR, Ridge, Bayesian Ridge.
 
 This pool was selected for having variability in architectures while avoiding a single dominant model.
 
-deskit algorithms tested: OLA, DEWS-U, DEWS-I, KNORA-U, KNORA-E, KNORA-IU.
+deskit algorithms tested: OLA, DEWS-U, DEWS-I, DEWS-T, KNORA-U, KNORA-E, KNORA-IU.
 
 ### Regression (MAE, lower is better)
 
-% shown as delta vs Best Single. 100-seed mean.
+% shown as delta vs Best Single. 20-seed mean.
 
-| Dataset                      | Best Single | Simple Avg | deskit best             |
-|------------------------------|-------------|------------|-------------------------|
-| California Housing (sklearn) | 0.3955      | +7.93%     | **−2.68%** (DEWS-I)  |
-| Bike Sharing (OpenML)        | 51.604      | +48.39%    | **−6.25%** (DEWS-I)  |
-| Abalone (OpenML)             | **1.4923**  | +1.29%     | +1.61% (KNORA-IU)       |
-| Diabetes (sklearn)           | **44.986**  | +2.98%     | +0.88% (DEWS-I)      |
-| Concrete Strength (OpenML)   | 5.3934      | +21.30%    | **−2.85%** (KNORA-IU)   |
+| Dataset                      | Best Single | Simple Avg | deskit best               |
+|------------------------------|-------------|------------|---------------------------|
+| California Housing (sklearn) | 0.3956      | +7.99%     | **−2.54%** (DEWS-I)       |
+| Bike Sharing (OpenML)        | 51.678      | +47.77%    | **−6.86%** (DEWS-I)       |
+| Abalone (OpenML)             | **1.4981**  | +1.14%     | +1.47% (KNORA-U/KNORA-IU) |
+| Diabetes (sklearn)           | **44.504**  | +3.18%     | +1.09% (DEWS-I/DEWS-T)    |
+| Concrete Strength (OpenML)   | 5.2686      | +23.66%    | **−1.20%** (DEWS-I)       |
 
 deskit beats best single and simple averaging on 3/5 regression datasets. This shows how DES can provide a
 strong boost if used on the right dataset, but it might be counterproductive if used blindly.
 
 KNORA variants are designed for classification, which explains the poor performance
 on regression datasets; However, some exception can occur in certain datasets, either where
-feature space is has hard clusters (like in Concrete Strength) or when the target is discrete
+feature space has hard clusters (like in Concrete Strength) or when the target is discrete
 and classification-like (like in Abalone).
 
 ### Classification (Accuracy, higher is better)
 
-% shown as delta vs Best Single. 100-seed mean.
+% shown as delta vs Best Single. 20-seed mean.
 
-| Dataset                | Best Single | Simple Avg | deskit best             |
-|------------------------|-------------|------------|-------------------------|
-| HAR (OpenML)           | 98.24%      | −0.32%     | **+0.14%** (DEWS-I)  |
-| Yeast (OpenML)         | 59.19%      | +0.46%     | **+1.48%** (KNORA-IU)   |
-| Image Segment (OpenML) | 93.65%      | +1.70%     | **+2.33%** (KNORA-IU)   |
-| Waveform (OpenML)      | **86.28%**  | −1.04%     | −0.55% (DEWS-I)      |
-| Vowel (OpenML)         | 90.54%      | −1.81%     | **+0.93%** (KNORA-IU)   |
+| Dataset                | Best Single | Simple Avg | deskit best              |
+|------------------------|-------------|------------|--------------------------|
+| HAR (OpenML)           | 98.24%      | −0.33%     | **+0.16%** (DEWS-T)      |
+| Yeast (OpenML)         | 58.87%      | +0.77%     | **+1.66%** (KNORA-IU)    |
+| Image Segment (OpenML) | 93.70%      | +1.40%     | **+2.25%** (DEWS-T)      |
+| Waveform (OpenML)      | **85.91%**  | −0.98%     | −0.39% (DEWS-T)          |
+| Vowel (OpenML)         | 89.95%      | −2.05%     | **+0.93%** (KNORA-IU)    |
 
 deskit beats or matches best single and simple averaging on 4/5 classification datasets. As seen on regression, DES
 can improve or hurt performance, so it must be used wisely, but if used correctly it can show promising results.

@@ -58,7 +58,8 @@ from sklearn.svm import SVC, SVR
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 from deskit.des.dewsu  import DEWSU
-from deskit.des.dewsi import DEWSI
+from deskit.des.dewsi  import DEWSI
+from deskit.des.dewst  import DEWST
 from deskit.des.ola     import OLA
 from deskit.des.knorau  import KNORAU
 from deskit.des.knorae  import KNORAE
@@ -102,12 +103,14 @@ W    = 84      # print width
 
 K_REG    = 20
 K_CLF    = 20
-TEMP_REG = 0.1
-TEMP_CLF = 1.0
+TEMP_REG    = 0.1
+TEMP_CLF    = 1.0
+R2_THRESHOLD = 0.7
 
 THRESHOLDS_REG = {
     'DEWS-U':   0.5,
-    'DEWS-I': 0.5,
+    'DEWS-I':   0.5,
+    'dews-t':   0.5,
     'ola':       0.5,
     'knora-u':   1.0,
     'knora-e':   1.0,
@@ -115,18 +118,20 @@ THRESHOLDS_REG = {
 }
 THRESHOLDS_CLF = {
     'DEWS-U':   0.5,
-    'DEWS-I': 0.5,
+    'DEWS-I':   0.5,
+    'dews-t':   0.5,
     'ola':       0.5,
     'knora-u':   0.5,
     'knora-e':   0.5,
     'knora-iu':  0.5,
 }
 
-DES_METHODS = ['DEWS-U', 'DEWS-I', 'ola', 'knora-u', 'knora-e', 'knora-iu']
+DES_METHODS = ['DEWS-U', 'DEWS-I', 'dews-t', 'ola', 'knora-u', 'knora-e', 'knora-iu']
 
 _DES_CLASSES = {
     'DEWS-U':   DEWSU,
-    'DEWS-I': DEWSI,
+    'DEWS-I':   DEWSI,
+    'dews-t':   DEWST,
     'ola':       OLA,
     'knora-u':   KNORAU,
     'knora-e':   KNORAE,
@@ -423,8 +428,11 @@ def load_waveform():
 
 def _make_router(task, method, metric, mode, k, preset='balanced'):
     """Instantiate a deskit algorithm class, suppressing the preset print."""
+    kwargs = dict(task=task, metric=metric, mode=mode, k=k, preset=preset)
+    if method == 'dews-t':
+        kwargs['r2_threshold'] = R2_THRESHOLD
     with contextlib.redirect_stdout(io.StringIO()):
-        return _DES_CLASSES[method](task=task, metric=metric, mode=mode, k=k, preset=preset)
+        return _DES_CLASSES[method](**kwargs)
 
 
 # Ensemble helpers
@@ -529,23 +537,25 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
 
 def _label_reg(method):
     return {
-        'DEWS-U':   f'deskit DEWS-U    (gate={THRESHOLDS_REG["DEWS-U"]}, T={TEMP_REG})',
-        'DEWS-I': f'deskit DEWS-I  (gate={THRESHOLDS_REG["DEWS-I"]}, T={TEMP_REG})',
-        'ola':        'deskit OLA',
-        'knora-u':   f'deskit KNORA-U    (th={THRESHOLDS_REG["knora-u"]})',
-        'knora-e':   f'deskit KNORA-E    (th={THRESHOLDS_REG["knora-e"]})',
-        'knora-iu':  f'deskit KNORA-IU   (th={THRESHOLDS_REG["knora-iu"]})',
+        'DEWS-U':  f'deskit DEWS-U   (gate={THRESHOLDS_REG["DEWS-U"]}, T={TEMP_REG})',
+        'DEWS-I':  f'deskit DEWS-I   (gate={THRESHOLDS_REG["DEWS-I"]}, T={TEMP_REG})',
+        'dews-t':  f'deskit DEWS-T   (gate={THRESHOLDS_REG["dews-t"]}, T={TEMP_REG}, R²≥{R2_THRESHOLD})',
+        'ola':       'deskit OLA',
+        'knora-u':  f'deskit KNORA-U  (th={THRESHOLDS_REG["knora-u"]})',
+        'knora-e':  f'deskit KNORA-E  (th={THRESHOLDS_REG["knora-e"]})',
+        'knora-iu': f'deskit KNORA-IU (th={THRESHOLDS_REG["knora-iu"]})',
     }[method]
 
 
 def _label_clf(method):
     return {
-        'DEWS-U':   f'deskit DEWS-U    (gate={THRESHOLDS_CLF["DEWS-U"]}, T={TEMP_CLF})',
-        'DEWS-I': f'deskit DEWS-I  (gate={THRESHOLDS_CLF["DEWS-I"]}, T={TEMP_CLF})',
-        'ola':        'deskit OLA',
-        'knora-u':   f'deskit KNORA-U    (th={THRESHOLDS_CLF["knora-u"]})',
-        'knora-e':   f'deskit KNORA-E    (th={THRESHOLDS_CLF["knora-e"]})',
-        'knora-iu':  f'deskit KNORA-IU   (th={THRESHOLDS_CLF["knora-iu"]})',
+        'DEWS-U':  f'deskit DEWS-U   (gate={THRESHOLDS_CLF["DEWS-U"]}, T={TEMP_CLF})',
+        'DEWS-I':  f'deskit DEWS-I   (gate={THRESHOLDS_CLF["DEWS-I"]}, T={TEMP_CLF})',
+        'dews-t':  f'deskit DEWS-T   (gate={THRESHOLDS_CLF["dews-t"]}, T={TEMP_CLF}, R²≥{R2_THRESHOLD})',
+        'ola':       'deskit OLA',
+        'knora-u':  f'deskit KNORA-U  (th={THRESHOLDS_CLF["knora-u"]})',
+        'knora-e':  f'deskit KNORA-E  (th={THRESHOLDS_CLF["knora-e"]})',
+        'knora-iu': f'deskit KNORA-IU (th={THRESHOLDS_CLF["knora-iu"]})',
     }[method]
 
 

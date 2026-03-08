@@ -9,6 +9,7 @@ nav:
   - Algorithms:
     - DEWS-U: algorithms/dewsu.md
     - DEWS-I: algorithms/dewsi.md
+    - DEWS-T: algorithms/dewst.md
     - KNORA-U: algorithms/knorau.md
     - KNORA-E: algorithms/knorae.md
     - KNORA-IU: algorithms/knoraiu.md

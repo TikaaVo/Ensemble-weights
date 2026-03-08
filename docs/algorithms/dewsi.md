@@ -17,7 +17,8 @@ so it also works for classification with confidence scores, but not as well with
 
 ## How it works
 
-When `fit` is called, DEWS-I fits a KNN algorithm on the validation data and builds a criterion score matrix. 
+When `fit` is called, DEWS-I fits a KNN algorithm on the validation data and builds a criterion score matrix.
+
 When `predict` is called, it finds the K nearest neighbors from the test point and uses the score matrix to combine
 every models' scores over the K neighbors with inverse-distance weights. Afterwards, it normalizes the average scores 
 using min-max normalization and removes the models under a threshold. Finally, it takes the remaining models 

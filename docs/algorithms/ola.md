@@ -18,6 +18,7 @@ cut down computation
 
 When `fit` is called, OLA fits a KNN algorithm on the validation data and builds a criterion score matrix, then normalizes
 them globally with min-max normalization. 
+
 When `predict` is called, it finds the K nearest neighbors from the test point and uses the score matrix to average
 every models' scores over the K neighbors. Afterwards, it uses `argmax` and gives full weight to the model that had the highest
 accuracy.
