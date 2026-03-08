@@ -34,7 +34,7 @@ and when used on an ensemble of models with differing architectures and perspect
 
 ## Algorithms
 
-deskit implements five DES algorithms. Each algorithm page covers how it works, when to use it,
+deskit implements multiple DES algorithms. Each algorithm page covers how it works, when to use it,
 and all accepted parameters. 
 
 For selecting the best algorithm for your task:
