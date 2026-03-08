@@ -38,6 +38,7 @@ deskit implements multiple DES algorithms. Each algorithm page covers how it wor
 and all accepted parameters. 
 
 For selecting the best algorithm for your task:
+
 - [Algorithm selection guide](selection.md)
 
 Algorithm list:
