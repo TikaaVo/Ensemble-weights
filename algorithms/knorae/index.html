@@ -354,6 +354,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../dewst/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DEWS-T
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../knorau/" class="md-nav__link">
         
   
@@ -876,8 +904,8 @@ to be used a discrete metric, usually <code>accuracy</code></li>
 </ul>
 <hr />
 <h2 id="how-it-works">How it works</h2>
-<p>When <code>fit</code> is called, KNORA-E fits a KNN algorithm on the validation data and builds a criterion score matrix. 
-When <code>predict</code> is called, it finds the K nearest neighbors from the test point and for normalizes the model scores
+<p>When <code>fit</code> is called, KNORA-E fits a KNN algorithm on the validation data and builds a criterion score matrix. </p>
+<p>When <code>predict</code> is called, it finds the K nearest neighbors from the test point and for normalizes the model scores
 for every neighbor with min-max normalization. If all models scored identically, they all get <code>1.0</code>. If there is are models that 
 exceeds the threshold for every neighbor case (for classification, this would mean that the model gets all of the neighbors correct),
 then those models survive and get equal weights, otherwise, k is decreased by 1 and the process is repeated. If the algorithm reaches

@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://TikaaVo.github.io/deskit/algorithms/dewsi/">
+        <link rel="canonical" href="https://TikaaVo.github.io/deskit/algorithms/dewst/">
       
       
-        <link rel="prev" href="../dewsu/">
+        <link rel="prev" href="../dewsi/">
       
       
-        <link rel="next" href="../dewst/">
+        <link rel="next" href="../knorau/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>DEWS-I - deskit</title>
+        <title>DEWS-T - deskit</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dews-i" class="md-skip">
+        <a href="#dews-t" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              DEWS-I
+              DEWS-T
             
           </span>
         </div>
@@ -323,6 +323,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../dewsi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DEWS-I
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -342,7 +370,7 @@
   <span class="md-ellipsis">
     
   
-    DEWS-I
+    DEWS-T
   
 
     
@@ -360,7 +388,7 @@
   <span class="md-ellipsis">
     
   
-    DEWS-I
+    DEWS-T
   
 
     
@@ -444,34 +472,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../dewst/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    DEWS-T
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -890,25 +890,38 @@
   
 
 
-<h1 id="dews-i">DEWS-I</h1>
+<h1 id="dews-t">DEWS-T</h1>
 <p>This algorithm is designed to be consistent and flexible for both classification and
-regression tasks and is a variation of DEWS-U that takes neighbor distance into consideration.
+regression tasks and is a variation of DEWS-I that fits a weighted trend line over
+each model's scores across the K neighbours, extrapolating to estimate competence at
+the test point itself rather than averaging.
 It uses soft blending between the top experts in a certain competence region to compute a set of weights for the models.</p>
 <hr />
 <h2 id="when-to-use">When to use</h2>
 <ul>
-<li>DEWS-I is currently the general recommendation for regression tasks. DEWS-I works best with soft metrics, 
-so it also works for classification with confidence scores, but not as well with hard predictions</li>
-<li>It performs best when the competence regions and pool are smooth and heterogeneous</li>
-<li>It performs worst for homogeneous datasets and for classification with hard predictions</li>
+<li>DEWS-T is currently the general recommendation when you want the best single deskit algorithm across both tasks.
+It works best with soft metrics, so it works for regression classification with confidence scores, but not as well with 
+hard predictions</li>
+<li>It performs best when competence regions have a smooth, directional structure — i.e. model quality
+  changes monotonically with distance from the test point</li>
+<li>It performs worst for homogeneous datasets, noisy neighbourhoods, and classification with hard predictions</li>
+<li>When no significant trend is detected (weighted R² below threshold), it falls back to DEWS-I automatically,
+  so it never performs worse than DEWS-I in expectation</li>
 </ul>
 <hr />
 <h2 id="how-it-works">How it works</h2>
-<p>When <code>fit</code> is called, DEWS-I fits a KNN algorithm on the validation data and builds a criterion score matrix.</p>
-<p>When <code>predict</code> is called, it finds the K nearest neighbors from the test point and uses the score matrix to combine
-every models' scores over the K neighbors with inverse-distance weights. Afterwards, it normalizes the average scores 
-using min-max normalization and removes the models under a threshold. Finally, it takes the remaining models 
-and creates weights with their scores using softmax with temperature.</p>
+<p>When <code>fit</code> is called, DEWS-T fits a KNN algorithm on the validation data and builds a criterion score matrix.
+For MAE and MSE, signed residuals are stored instead of raw metric values so that
+directional information is preserved across neighbors.</p>
+<p>When <code>predict</code> is called, it finds the K nearest neighbors from the test point. For each model, it fits
+a weighted least squares line over the K neighbors, using inverse-distance weights so closer neighbors
+pull the fit more strongly. The line is extrapolated to distance = 0 to estimate the model's competence
+at the test point.</p>
+<p>The quality of each trend line is evaluated using weighted R². If R² is below <code>r2_threshold</code>, that model
+falls back to DEWS-I. This fallback happens per model per sample, 
+so some models may use the trend while others fall back on the same test point.</p>
+<p>The resulting scores are normalised using min-max normalisation and models below <code>threshold</code> are removed.
+Finally, the remaining models are blended using softmax with temperature.</p>
 <hr />
 <h2 id="parameters">Parameters</h2>
 <table>
@@ -958,6 +971,12 @@ and creates weights with their scores using softmax with temperature.</p>
 <td>Defines how smooth the model blend is</td>
 </tr>
 <tr>
+<td><code>r2_threshold</code></td>
+<td>float</td>
+<td>0.7</td>
+<td>Minimum weighted R² for the trend line to be trusted</td>
+</tr>
+<tr>
 <td><code>preset</code></td>
 <td>str</td>
 <td><code>"balanced"</code></td>
@@ -974,25 +993,29 @@ and creates weights with their scores using softmax with temperature.</p>
 <hr />
 <h2 id="example">Example</h2>
 <pre><code class="language-python"># Regression
-from deskit.des.dewsi import DEWSI
+from deskit.des.dewst import DEWST
 
-router = DEWSI(task=&quot;regression&quot;, metric=&quot;mae&quot;, mode=&quot;min&quot;, k=20)
+router = DEWST(task=&quot;regression&quot;, metric=&quot;mae&quot;, mode=&quot;min&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
 weights = router.predict(x)
 </code></pre>
 <pre><code class="language-python"># Classification
-from deskit.des.dewsi import DEWSI
+from deskit.des.dewst import DEWST
 
-router = DEWSI(task=&quot;classification&quot;, metric=&quot;log_loss&quot;, mode=&quot;min&quot;, k=20)
+router = DEWST(task=&quot;classification&quot;, metric=&quot;log_loss&quot;, mode=&quot;min&quot;, k=20)
 router.fit(X_val, y_val, val_preds)
 weights = router.predict(x)
 </code></pre>
 <hr />
 <h2 id="notes">Notes</h2>
-<p>A lower temperature is recommended for regression because regression metrics tend to produce scores on a 
-continuous scale where differences can be large, so a low temperature sharpens the softmax to reflect that. 
+<p>A lower temperature is recommended for regression because regression metrics tend to produce scores on a
+continuous scale where differences can be large, so a low temperature sharpens the softmax to reflect that.
 In contrast, classification metrics tend to produce scores that are closer together, so a higher temperature
 keeps the blend soft.</p>
+<p>The <code>r2_threshold</code> controls how often the trend line is trusted over the DEWS-I fallback. A higher value
+means the algorithm is more conservative and only extrapolates when the evidence is strong, converging toward
+DEWS-I behavior on noisy datasets. A value of 0.7 is recommended as it filters out weak trends while
+still exploiting genuine directional structure when present.</p>
 
 
 

@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://TikaaVo.github.io/deskit/algorithms/knorau/">
       
       
-        <link rel="prev" href="../dewsi/">
+        <link rel="prev" href="../dewst/">
       
       
         <link rel="next" href="../knorae/">
@@ -334,6 +334,34 @@
     
   
     DEWS-I
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dewst/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    DEWS-T
   
 
     
@@ -875,8 +903,8 @@ many correct predictions were made.</p>
 </ul>
 <hr />
 <h2 id="how-it-works">How it works</h2>
-<p>When <code>fit</code> is called, KNORA-U fits a KNN algorithm on the validation data and builds a criterion score matrix. 
-When <code>predict</code> is called, it finds the K nearest neighbors from the test point and for normalizes the model scores
+<p>When <code>fit</code> is called, KNORA-U fits a KNN algorithm on the validation data and builds a criterion score matrix. </p>
+<p>When <code>predict</code> is called, it finds the K nearest neighbors from the test point and for normalizes the model scores
 for every neighbor with min-max normalization. If all models scored identically, they all get <code>1.0</code>. For each model, the amount of neighbors where its score
 exceeded the threshold (in classification, this would mean that the predictions were correct) is that model's vote total.
 The vote counts are then normalized by dividing them by the total amount of votes and turned into weights. If no model earned any votes at all, 
