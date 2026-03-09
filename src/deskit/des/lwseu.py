@@ -22,15 +22,15 @@ class LWSEU:
     """
 
     def __init__(self, task, k=10, preset='balanced', **kwargs):
-        self.task    = task
-        self.k       = k
+        self.task = task
+        self.k = k
         self._finder = make_finder(preset, k, **kwargs)
-        self.models  = None
+        self.models = None
 
         self._val_preds = None
-        self._y_val     = None
-        self._y_onehot  = None
-        self._is_proba  = None
+        self._y_val = None
+        self._y_onehot = None
+        self._is_proba = None
 
     def fit(self, features, y, preds_dict):
         """
@@ -48,10 +48,10 @@ class LWSEU:
             classification with probability output.
         """
         features = np.asarray(features, dtype=float)
-        y        = np.asarray(y)
+        y = np.asarray(y)
 
-        self.models  = list(preds_dict.keys())
-        first        = np.asarray(list(preds_dict.values())[0])
+        self.models = list(preds_dict.keys())
+        first = np.asarray(list(preds_dict.values())[0])
         self._is_proba = (first.ndim == 2)
 
         if self._is_proba:
@@ -84,10 +84,10 @@ class LWSEU:
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
         """
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
-        n_models   = len(self.models)
-        uniform    = np.full(n_models, 1.0 / n_models)
+        n_models = len(self.models)
+        uniform = np.full(n_models, 1.0 / n_models)
 
         distances, indices = self._finder.kneighbors(x)   # (batch, k)
 
@@ -96,13 +96,13 @@ class LWSEU:
             idx = indices[b]                               # (k,)
 
             if self._is_proba:
-                P       = self._val_preds[idx]             # (k, n_models, n_classes)
+                P = self._val_preds[idx]             # (k, n_models, n_classes)
                 k_, _, n_classes = P.shape
-                P_flat  = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
-                y_flat  = self._y_onehot[idx].reshape(k_ * n_classes)
+                P_flat = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
+                y_flat = self._y_onehot[idx].reshape(k_ * n_classes)
                 coeffs, _ = nnls(P_flat, y_flat)
             else:
-                P     = self._val_preds[idx]               # (k, n_models)
+                P = self._val_preds[idx]               # (k, n_models)
                 y_nbr = self._y_val[idx]                   # (k,)
                 coeffs, _ = nnls(P, y_nbr)
 

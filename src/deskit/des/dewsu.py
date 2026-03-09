@@ -39,8 +39,8 @@ class DEWSU(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
-        self.task         = task
-        self.threshold    = threshold
+        self.task = task
+        self.threshold = threshold
         self._temperature = temperature
         self._metric_name = metric_name
 
@@ -85,7 +85,7 @@ class DEWSU(KNNBase):
              (0.1 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
         _, indices = self.model.kneighbors(x)
@@ -94,17 +94,17 @@ class DEWSU(KNNBase):
         avg_scores = self.matrix[indices].mean(axis=1)
 
         # Normalize per neighborhood
-        local_min   = avg_scores.min(axis=1, keepdims=True)
-        local_max   = avg_scores.max(axis=1, keepdims=True)
+        local_min = avg_scores.min(axis=1, keepdims=True)
+        local_max = avg_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
         # Zero out models below threshold.
         # If nothing passes: go for single best
         if th > 0:
-            gate      = norm_scores >= th
-            any_pass  = gate.any(axis=1, keepdims=True)
-            gate      = np.where(any_pass, gate, norm_scores == 1.0)
+            gate = norm_scores >= th
+            any_pass = gate.any(axis=1, keepdims=True)
+            gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
 
         # Softmax

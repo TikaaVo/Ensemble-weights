@@ -63,8 +63,8 @@ class DynamicRouter:
             )
 
         self._feature_extractor = feature_extractor
-        self._method            = method
-        self._temperature       = temperature
+        self._method = method
+        self._temperature = temperature
 
         cls = _METHOD_CLASSES[method]
 
@@ -177,8 +177,8 @@ class DynamicRouter:
         """Return a dict summarising the current configuration."""
         des = self._des
         return {
-            'method':    self._method,
-            'metric':    getattr(des, '_metric_name', '<custom callable>'),
-            'mode':      des.mode,
+            'method': self._method,
+            'metric': getattr(des, '_metric_name', '<custom callable>'),
+            'mode': des.mode,
             'threshold': getattr(des, 'threshold', None),
         }

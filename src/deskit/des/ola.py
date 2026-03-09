@@ -29,7 +29,7 @@ class OLA(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
-        self.task         = task
+        self.task = task
         self._metric_name = metric_name
 
     def fit(self, features, y, preds_dict):
@@ -70,11 +70,11 @@ class OLA(KNNBase):
             Single sample: {model_name: weight}. Batch: list of such dicts.
             The selected model always gets weight 1.0; all others get 0.0.
         """
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
-        _, indices   = self.model.kneighbors(x)
-        avg_scores   = self.matrix[indices].mean(axis=1)
+        _, indices = self.model.kneighbors(x)
+        avg_scores = self.matrix[indices].mean(axis=1)
         best_indices = np.argmax(avg_scores, axis=1)
 
         weights = np.zeros((batch_size, len(self.models)))

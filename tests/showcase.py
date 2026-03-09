@@ -100,12 +100,12 @@ except ImportError:
     DESREG_AVAILABLE = False
 
 SEED = 42
-W    = 84      # print width
+W = 84      # print width
 
-K_REG    = 20
-K_CLF    = 20
-TEMP_REG    = 0.1
-TEMP_CLF    = 1.0
+K_REG = 20
+K_CLF = 20
+TEMP_REG = 0.1
+TEMP_CLF = 1.0
 R2_THRESHOLD = 0.7
 
 THRESHOLDS_REG = {
@@ -198,7 +198,7 @@ def section(title):
 
 
 def show_results_reg(rows, best_mae, y_mean):
-    valid        = [(n, m) for n, m in rows if m is not None]
+    valid = [(n, m) for n, m in rows if m is not None]
     best_overall = min(m for _, m in valid) if valid else best_mae
     print(f"\n  {'Method':<48} {'MAE':>8}  {'% of mean':>10}  {'vs Best':>9}")
     print(f"  {'-'*48}  {'-'*8}  {'-'*10}  {'-'*9}")
@@ -212,9 +212,9 @@ def show_results_reg(rows, best_mae, y_mean):
             print(f"  {name:<48}  {'N/A':>8}  {'':>10}  {'':>9}")
             continue
         pct_mean = mae / y_mean * 100
-        delta    = (mae - best_mae) / best_mae * 100
-        d_str    = "    -    " if mae == best_mae else f"{'+' if delta >= 0 else ''}{delta:.2f}%"
-        marker   = "  <" if mae == best_overall else ""
+        delta = (mae - best_mae) / best_mae * 100
+        d_str = "    -    " if mae == best_mae else f"{'+' if delta >= 0 else ''}{delta:.2f}%"
+        marker = "  <" if mae == best_overall else ""
         print(f"  {name:<48}  {mae:>8.4f}  {pct_mean:>9.2f}%  {d_str:>9}{marker}")
 
 
@@ -232,8 +232,8 @@ def show_results_clf(rows, best_acc):
         if acc is None:
             print(f"  {name:<48}  {'N/A':>9}  {'':>9}")
             continue
-        delta  = (acc - best_acc) / best_acc * 100
-        d_str  = "    -    " if acc == best_acc else f"{'+' if delta >= 0 else ''}{delta:.2f}%"
+        delta = (acc - best_acc) / best_acc * 100
+        d_str = "    -    " if acc == best_acc else f"{'+' if delta >= 0 else ''}{delta:.2f}%"
         marker = "  <" if acc == best_overall else ""
         print(f"  {name:<48}  {acc*100:>8.2f}%  {d_str:>9}{marker}")
 
@@ -253,10 +253,10 @@ def preprocess(X_tr, X_val, X_test):
     """
     Impute and StandardScale all splits using training statistics.
     """
-    prep     = Pipeline([('imp', SimpleImputer(strategy='median')),
+    prep = Pipeline([('imp', SimpleImputer(strategy='median')),
                          ('sc',  StandardScaler())])
-    X_tr_s   = prep.fit_transform(X_tr)
-    X_val_s  = prep.transform(X_val)
+    X_tr_s = prep.fit_transform(X_tr)
+    X_val_s = prep.transform(X_val)
     X_test_s = prep.transform(X_test)
     return X_tr_s, X_val_s, X_test_s
 
@@ -281,10 +281,10 @@ def build_regressors(seed=SEED):
                          wins on well-behaved Gaussian data
     """
     return {
-        'KNN':            KNeighborsRegressor(n_neighbors=5, n_jobs=-1),
-        'Decision Tree':  DecisionTreeRegressor(max_depth=8, random_state=seed),
-        'SVR':            SVR(kernel='rbf', C=1.0),
-        'Ridge':          Ridge(alpha=1.0),
+        'KNN': KNeighborsRegressor(n_neighbors=5, n_jobs=-1),
+        'Decision Tree': DecisionTreeRegressor(max_depth=8, random_state=seed),
+        'SVR': SVR(kernel='rbf', C=1.0),
+        'Ridge': Ridge(alpha=1.0),
         'Bayesian Ridge': BayesianRidge(),
     }
 
@@ -302,12 +302,12 @@ def build_classifiers(seed=SEED):
       Logistic Reg   — linear; wins on linearly separable regions
     """
     return {
-        'KNN':           KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
+        'KNN': KNeighborsClassifier(n_neighbors=5, n_jobs=-1),
         'Decision Tree': DecisionTreeClassifier(max_depth=8, random_state=seed),
-        'Gaussian NB':   GaussianNB(),
-        'SVM-RBF':       SVC(C=1.0, kernel='rbf', probability=True,
+        'Gaussian NB': GaussianNB(),
+        'SVM-RBF': SVC(C=1.0, kernel='rbf', probability=True,
                              random_state=seed),
-        'Logistic Reg':  LogisticRegression(max_iter=1000, random_state=seed,
+        'Logistic Reg': LogisticRegression(max_iter=1000, random_state=seed,
                                             n_jobs=-1),
     }
 
@@ -380,8 +380,8 @@ def load_har():
     """
     print("  Fetching HAR from OpenML...", end=' ', flush=True)
     ds = fetch_openml(data_id=1478, as_frame=True, parser='auto')
-    X  = ds.data.astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
+    X = ds.data.astype(float).values
+    y = LabelEncoder().fit_transform(ds.target)
     print("done")
     return X, y, 'Human Activity Recognition (HAR)', X.shape[1], len(np.unique(y))
 
@@ -393,8 +393,8 @@ def load_yeast():
     """
     print("  Fetching Yeast from OpenML...", end=' ', flush=True)
     ds = fetch_openml(data_id=181, as_frame=True, parser='auto')
-    X  = ds.data.astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
+    X = ds.data.astype(float).values
+    y = LabelEncoder().fit_transform(ds.target)
     print("done")
     return X, y, 'Yeast (Protein Localisation)', X.shape[1], len(np.unique(y))
 
@@ -406,8 +406,8 @@ def load_segment():
     """
     print("  Fetching Image Segment from OpenML...", end=' ', flush=True)
     ds = fetch_openml(data_id=36, as_frame=True, parser='auto')
-    X  = ds.data.astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
+    X = ds.data.astype(float).values
+    y = LabelEncoder().fit_transform(ds.target)
     print("done")
     return X, y, 'Image Segment', X.shape[1], len(np.unique(y))
 
@@ -418,8 +418,8 @@ def load_vowel():
     """
     print("  Fetching Vowel from OpenML...", end=' ', flush=True)
     ds = fetch_openml(data_id=307, as_frame=True, parser='auto')
-    X  = ds.data.select_dtypes(include='number').astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
+    X = ds.data.select_dtypes(include='number').astype(float).values
+    y = LabelEncoder().fit_transform(ds.target)
     print("done")
     return X, y, 'Vowel Recognition', X.shape[1], len(np.unique(y))
 
@@ -431,8 +431,8 @@ def load_waveform():
     """
     print("  Fetching Waveform from OpenML...", end=' ', flush=True)
     ds = fetch_openml(data_id=60, as_frame=True, parser='auto')
-    X  = ds.data.astype(float).values
-    y  = LabelEncoder().fit_transform(ds.target)
+    X = ds.data.astype(float).values
+    y = LabelEncoder().fit_transform(ds.target)
     print("done")
     return X, y, 'Waveform (waveform-5000)', X.shape[1], len(np.unique(y))
 
@@ -475,12 +475,12 @@ def fit_global_ensemble_clf(val_probas, y_val):
 
 def apply_global_weights_clf(probas, weights):
     names = list(weights.keys())
-    w     = np.array([weights[n] for n in names])
+    w = np.array([weights[n] for n in names])
     return np.einsum('m,mnc->nc', w, np.stack([probas[n] for n in names]))
 
 
 def des_predict_reg(router, X_test, test_preds, temperature, threshold):
-    names  = list(test_preds.keys())
+    names = list(test_preds.keys())
     result = router.predict(X_test, temperature=temperature, threshold=threshold)
     if isinstance(result, dict):
         result = [result]
@@ -491,7 +491,7 @@ def des_predict_reg(router, X_test, test_preds, temperature, threshold):
 
 
 def des_predict_clf(router, X_test, test_probas, temperature, threshold):
-    names  = list(test_probas.keys())
+    names = list(test_probas.keys())
     result = router.predict(X_test, temperature=temperature, threshold=threshold)
     if isinstance(result, dict):
         result = [result]
@@ -513,10 +513,10 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
     fit_ms    : dict[str, float]
     pred_ms   : dict[str, float]
     """
-    pool     = list(fitted_models.values())
-    results  = {}
-    fit_ms   = {}
-    pred_ms  = {}
+    pool = list(fitted_models.values())
+    results = {}
+    fit_ms = {}
+    pred_ms = {}
 
     _dl_registry = [
         ('KNORA-U',  DL_KNORAU),
@@ -546,7 +546,7 @@ def run_deslib(fitted_models, X_val_s, y_val, X_test_s, y_test, k=K_CLF):
             results[dl_label] = accuracy_score(y_test, y_pred)
         except Exception as exc:
             results[dl_label] = None
-            fit_ms[dl_label]  = float('nan')
+            fit_ms[dl_label] = float('nan')
             pred_ms[dl_label] = float('nan')
             print(f"      ✗ DESlib {dl_label} failed: {exc}")
 
@@ -611,7 +611,7 @@ def run_desreg(X_tv_s, y_tv, X_test_s, y_test, seed=SEED, k=K_REG, verbose=True)
     regressors = list(build_regressors(seed=seed).values())
 
     results = {}
-    fit_ms  = {}
+    fit_ms = {}
     pred_ms = {}
 
     for mode in DR_METHODS:
@@ -672,12 +672,12 @@ def run_regression(loader, seed=SEED, verbose=True):
                        f"target mean = {y.mean():.2f}  std = {y.std():.2f}")
 
     X_tv, X_test, y_tv, y_test = train_test_split(X, y, test_size=0.20, random_state=seed)
-    X_tr, X_val,  y_tr, y_val  = train_test_split(X_tv, y_tv, test_size=0.25, random_state=seed)
-    X_tr_s, X_val_s, X_test_s  = preprocess(X_tr, X_val, X_test)
+    X_tr, X_val,  y_tr, y_val = train_test_split(X_tv, y_tv, test_size=0.25, random_state=seed)
+    X_tr_s, X_val_s, X_test_s = preprocess(X_tr, X_val, X_test)
     # X_tv_s: train+val on training scaler — passed to DESReg for a fair data budget
     _prep_tv = Pipeline([('imp', SimpleImputer(strategy='median')),
                          ('sc',  StandardScaler())])
-    X_tv_s   = _prep_tv.fit_transform(X_tv)
+    X_tv_s = _prep_tv.fit_transform(X_tv)
     _print(f"\n  Split -> {len(X_tr):,} train / {len(X_val):,} val / {len(X_test):,} test")
     if DESLIB_AVAILABLE and verbose:
         _print("  Note: DESlib does not support regression — only deskit benchmarked here.")
@@ -689,9 +689,9 @@ def run_regression(loader, seed=SEED, verbose=True):
     for mname, model in models.items():
         t0 = time.time()
         model.fit(X_tr_s, y_tr)
-        val_preds[mname]  = model.predict(X_val_s)
+        val_preds[mname] = model.predict(X_val_s)
         test_preds[mname] = model.predict(X_test_s)
-        val_maes[mname]   = mean_absolute_error(y_val, val_preds[mname])
+        val_maes[mname] = mean_absolute_error(y_val, val_preds[mname])
         _print(f"    v {mname:<20}  MAE = {val_maes[mname]:.4f}   ({time.time()-t0:.1f}s)")
 
     best_name = min(val_maes, key=val_maes.get)
@@ -703,8 +703,8 @@ def run_regression(loader, seed=SEED, verbose=True):
 
     fit_times, predict_times, des_preds = {}, {}, {}
     for method in DES_METHODS:
-        th     = THRESHOLDS_REG[method]
-        label  = _label_reg(method)
+        th = THRESHOLDS_REG[method]
+        label = _label_reg(method)
         router = _make_router('regression', method, 'mae', 'min', K_REG)
         t0 = time.perf_counter()
         router.fit(X_val_s, y_val, val_preds)
@@ -726,7 +726,7 @@ def run_regression(loader, seed=SEED, verbose=True):
             X_tv_s, y_tv, X_test_s, y_test, seed=seed, k=K_REG, verbose=verbose)
 
     best_mae = mean_absolute_error(y_test, test_preds[best_name])
-    ge_mae   = mean_absolute_error(y_test, apply_global_weights_reg(test_preds, ge_w))
+    ge_mae = mean_absolute_error(y_test, apply_global_weights_reg(test_preds, ge_w))
     rows = [
         (f"Best Single  ({best_name})", best_mae),
         ("Simple Average",  ge_mae),
@@ -740,7 +740,7 @@ def run_regression(loader, seed=SEED, verbose=True):
         show_results_reg(rows, best_mae, float(y_test.mean()))
         show_timing(DES_METHODS, fit_times, predict_times, len(X_test_s))
 
-    labelled_fit  = {_label_reg(m): fit_times[m]     for m in DES_METHODS}
+    labelled_fit = {_label_reg(m): fit_times[m] for m in DES_METHODS}
     labelled_pred = {_label_reg(m): predict_times[m] for m in DES_METHODS}
     return dict(rows), labelled_fit, labelled_pred
 
@@ -788,10 +788,10 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
     for mname, model in models.items():
         t0 = time.time()
         model.fit(X_tr_s, y_tr)
-        val_probas[mname]     = model.predict_proba(X_val_s)
+        val_probas[mname] = model.predict_proba(X_val_s)
         val_preds_hard[mname] = model.predict(X_val_s)
-        test_probas[mname]    = model.predict_proba(X_test_s)
-        val_accs[mname]       = accuracy_score(y_val, model.predict(X_val_s))
+        test_probas[mname] = model.predict_proba(X_test_s)
+        val_accs[mname] = accuracy_score(y_val, model.predict(X_val_s))
         _print(f"    v {mname:<20}  Acc = {val_accs[mname]*100:.2f}%   ({time.time()-t0:.1f}s)")
 
     best_name = max(val_accs, key=val_accs.get)
@@ -804,13 +804,13 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
     fit_times, predict_times, des_probas = {}, {}, {}
     _KNORA = {'knora-u', 'knora-e', 'knora-iu'}
     for method in DES_METHODS:
-        th    = THRESHOLDS_CLF[method]
+        th = THRESHOLDS_CLF[method]
         label = _label_clf(method)
         if method in _KNORA:
-            router    = _make_router('classification', method, 'accuracy', 'max', k)
+            router = _make_router('classification', method, 'accuracy', 'max', k)
             fit_input = val_preds_hard
         else:
-            router    = _make_router('classification', method, 'log_loss', 'min', k)
+            router = _make_router('classification', method, 'log_loss', 'min', k)
             fit_input = val_probas
         t0 = time.perf_counter()
         router.fit(X_val_s, y_val, fit_input)
@@ -837,7 +837,7 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
                        f"  fit: {ft:6.2f}ms  |  predict: {pt:6.2f}ms")
 
     best_acc = accuracy_score(y_test, models[best_name].predict(X_test_s))
-    ge_acc   = accuracy_score(
+    ge_acc = accuracy_score(
         y_test, apply_global_weights_clf(test_probas, ge_w).argmax(axis=1))
     rows = [
         (f"Best Single  ({best_name})", best_acc),
@@ -855,10 +855,10 @@ def run_classification(loader, k=K_CLF, seed=SEED, verbose=True, note=None):
         show_results_clf(rows, best_acc)
         show_timing(DES_METHODS, fit_times, predict_times, len(X_test_s))
 
-    labelled_fit  = {_label_clf(m): fit_times[m]     for m in DES_METHODS}
+    labelled_fit  = {_label_clf(m): fit_times[m] for m in DES_METHODS}
     labelled_pred = {_label_clf(m): predict_times[m] for m in DES_METHODS}
     if DESLIB_AVAILABLE:
-        labelled_fit.update({f'DESlib {dl}':  v for dl, v in dl_fit_ms.items()})
+        labelled_fit.update({f'DESlib {dl}': v for dl, v in dl_fit_ms.items()})
         labelled_pred.update({f'DESlib {dl}': v for dl, v in dl_pred_ms.items()})
     return dict(rows), labelled_fit, labelled_pred
 

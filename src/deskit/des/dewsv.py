@@ -45,15 +45,15 @@ class DEWSV(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
 
-        self._use_signed  = metric_name in _SIGNED_METRICS
+        self._use_signed = metric_name in _SIGNED_METRICS
         self._metric_name = metric_name
 
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
 
-        self.task         = task
-        self.threshold    = threshold
+        self.task = task
+        self.threshold = threshold
         self._temperature = temperature
-        self._var_matrix  = None   # (n_val, n_models) signed residuals, MAE/MSE only
+        self._var_matrix = None   # (n_val, n_models) signed residuals, MAE/MSE only
 
     def fit(self, features, y, preds_dict):
         """
@@ -75,7 +75,7 @@ class DEWSV(KNNBase):
 
         # Build signed residual matrix for variance (MAE/MSE only).
         if self._use_signed:
-            n_val    = len(y)
+            n_val = len(y)
             n_models = len(self.models)
             self._var_matrix = np.zeros((n_val, n_models))
             for j, name in enumerate(self.models):
@@ -99,19 +99,19 @@ class DEWSV(KNNBase):
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
         """
-        t  = temperature if temperature is not None else (
+        t = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
              (0.1 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
         _, indices = self.model.kneighbors(x)              # (batch, k)
 
         # Uniform average of each model's scores over K neighbors.
         neighbor_scores = self.matrix[indices]              # (batch, k, n_models)
-        avg_scores      = neighbor_scores.mean(axis=1)     # (batch, n_models)
+        avg_scores = neighbor_scores.mean(axis=1)     # (batch, n_models)
 
         # Variance of signed residuals (MAE/MSE) or score matrix.
         if self._use_signed:
@@ -122,31 +122,31 @@ class DEWSV(KNNBase):
         local_var = var_scores.var(axis=1)                 # (batch, n_models)
 
         # Normalize scores to [0, 1]
-        local_min   = avg_scores.min(axis=1, keepdims=True)
-        local_max   = avg_scores.max(axis=1, keepdims=True)
+        local_min = avg_scores.min(axis=1, keepdims=True)
+        local_max = avg_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
         # Normalize variance to [0, 1]
-        var_min   = local_var.min(axis=1, keepdims=True)
-        var_max   = local_var.max(axis=1, keepdims=True)
+        var_min = local_var.min(axis=1, keepdims=True)
+        var_max = local_var.max(axis=1, keepdims=True)
         var_range = var_max - var_min
-        norm_var  = (local_var - var_min) / np.where(var_range > 0, var_range, 1.0)
+        norm_var = (local_var - var_min) / np.where(var_range > 0, var_range, 1.0)
 
         # Penalise inconsistent models
         norm_scores = norm_scores / (1.0 + norm_var)
 
         # Re-normalize
-        local_min   = norm_scores.min(axis=1, keepdims=True)
-        local_max   = norm_scores.max(axis=1, keepdims=True)
+        local_min = norm_scores.min(axis=1, keepdims=True)
+        local_max = norm_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (norm_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
         # Zero out models below threshold.
         if th > 0:
-            gate        = norm_scores >= th
-            any_pass    = gate.any(axis=1, keepdims=True)
-            gate        = np.where(any_pass, gate, norm_scores == 1.0)
+            gate = norm_scores >= th
+            any_pass = gate.any(axis=1, keepdims=True)
+            gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
 
         # Softmax.
@@ -154,7 +154,7 @@ class DEWSV(KNNBase):
         exp_scores = np.exp((norm_scores - max_scores) / t)
         if th > 0:
             exp_scores = exp_scores * gate
-        total   = exp_scores.sum(axis=1, keepdims=True)
+        total = exp_scores.sum(axis=1, keepdims=True)
         weights = np.where(total > 0,
                            exp_scores / np.where(total > 0, total, 1.0),
                            np.full_like(exp_scores, 1.0 / len(self.models)))

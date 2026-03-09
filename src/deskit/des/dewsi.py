@@ -43,8 +43,8 @@ class DEWSI(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
-        self.task         = task
-        self.threshold    = threshold
+        self.task = task
+        self.threshold = threshold
         self._temperature = temperature
         self._metric_name = metric_name
 
@@ -84,35 +84,35 @@ class DEWSI(KNNBase):
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
         """
-        t  = temperature if temperature is not None else (
+        t = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
              (0.1 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
         distances, indices = self.model.kneighbors(x)   # both (batch, k)
 
         # Inverse-distance-weighted average of each model's scores over the K neighbors.
         # Closer neighbors exert stronger influence on routing.
-        inv_dist    = 1.0 / np.maximum(distances, 1e-8)          # (batch, k)
-        inv_dist_w  = inv_dist / inv_dist.sum(axis=1, keepdims=True)  # normalised weights
+        inv_dist = 1.0 / np.maximum(distances, 1e-8)          # (batch, k)
+        inv_dist_w = inv_dist / inv_dist.sum(axis=1, keepdims=True)  # normalised weights
         neighbor_scores = self.matrix[indices]                    # (batch, k, n_models)
-        avg_scores  = (neighbor_scores * inv_dist_w[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
+        avg_scores = (neighbor_scores * inv_dist_w[:, :, np.newaxis]).sum(axis=1)  # (batch, n_models)
 
         # Normalize per neighborhood: best model = 1.0, worst = 0.0
-        local_min   = avg_scores.min(axis=1, keepdims=True)
-        local_max   = avg_scores.max(axis=1, keepdims=True)
+        local_min = avg_scores.min(axis=1, keepdims=True)
+        local_max = avg_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
         # Zero out models below threshold.
         # If nothing passes: fall back to single best.
         if th > 0:
-            gate        = norm_scores >= th
-            any_pass    = gate.any(axis=1, keepdims=True)
-            gate        = np.where(any_pass, gate, norm_scores == 1.0)
+            gate = norm_scores >= th
+            any_pass = gate.any(axis=1, keepdims=True)
+            gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
 
         # Softmax
@@ -120,7 +120,7 @@ class DEWSI(KNNBase):
         exp_scores = np.exp((norm_scores - max_scores) / t)
         if th > 0:
             exp_scores = exp_scores * gate
-        total   = exp_scores.sum(axis=1, keepdims=True)
+        total = exp_scores.sum(axis=1, keepdims=True)
         weights = np.where(total > 0,
                            exp_scores / np.where(total > 0, total, 1.0),
                            np.full_like(exp_scores, 1.0 / len(self.models)))

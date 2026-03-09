@@ -106,7 +106,7 @@ def make_finder(preset, k, finder=None, **kwargs):
     if preset == 'custom':
         if finder is None:
             raise ValueError("Must specify 'finder' when using preset='custom'.")
-        finder_type   = finder.lower()
+        finder_type = finder.lower()
         finder_kwargs = {'k': k, **kwargs}
     else:
         if preset not in SPEED_PRESETS:
@@ -115,8 +115,8 @@ def make_finder(preset, k, finder=None, **kwargs):
                 f"Available: {sorted(SPEED_PRESETS)}. "
                 f"Or use preset='custom' with an explicit finder."
             )
-        config        = SPEED_PRESETS[preset]
-        finder_type   = config['finder']
+        config = SPEED_PRESETS[preset]
+        finder_type = config['finder']
         finder_kwargs = {**config['kwargs'], 'k': k, **kwargs}
         print(f"Using preset '{preset}': {config['description']}")
 
@@ -145,8 +145,8 @@ def prep_fit_inputs(features, y, preds_dict, metric_name):
     -------
     features, y, preds_dict — all as numpy arrays, ready for KNNBase.fit().
     """
-    features   = to_numpy(features)
-    y          = to_numpy(y)
+    features = to_numpy(features)
+    y = to_numpy(y)
     preds_dict = {name: to_numpy(p) for name, p in preds_dict.items()}
 
     n = len(y)

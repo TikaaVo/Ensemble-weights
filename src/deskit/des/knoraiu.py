@@ -35,8 +35,8 @@ class KNORAIU(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
-        self.task         = task
-        self.threshold    = threshold
+        self.task = task
+        self.threshold = threshold
         self._metric_name = metric_name
 
     def fit(self, features, y, preds_dict):
@@ -75,17 +75,17 @@ class KNORAIU(KNNBase):
         """
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
         distances, indices = self.model.kneighbors(x)   # both (batch, k)
-        neighbor_scores    = self.matrix[indices]        # (batch, k, n_models)
+        neighbor_scores = self.matrix[indices]        # (batch, k, n_models)
 
         # Normalize per neighbor: best model = 1.0, worst = 0.0.
-        n_min   = neighbor_scores.min(axis=2, keepdims=True)
-        n_max   = neighbor_scores.max(axis=2, keepdims=True)
+        n_min = neighbor_scores.min(axis=2, keepdims=True)
+        n_max = neighbor_scores.max(axis=2, keepdims=True)
         n_range = n_max - n_min
-        norm    = np.where(n_range > 0,
+        norm = np.where(n_range > 0,
                            (neighbor_scores - n_min) / n_range,
                            1.0)   # tied → all equally competent
 
@@ -102,7 +102,7 @@ class KNORAIU(KNNBase):
         # Normalize to weights that sum to 1.
         # Uniform fallback if no model earned any votes.
         any_votes = total > 0
-        weights   = np.where(
+        weights = np.where(
             any_votes,
             votes / np.where(any_votes, total, 1.0),
             np.full_like(votes, 1.0 / len(self.models)),

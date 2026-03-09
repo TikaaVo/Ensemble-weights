@@ -36,7 +36,7 @@ class KNORAU(KNNBase):
         finder = make_finder(preset, k, **kwargs)
         super().__init__(metric=metric_fn, mode=mode, neighbor_finder=finder)
         self.task = task
-        self.threshold= threshold
+        self.threshold = threshold
         self._metric_name = metric_name
 
     def fit(self, features, y, preds_dict):

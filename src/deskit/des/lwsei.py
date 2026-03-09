@@ -21,16 +21,16 @@ class LWSEI:
     """
 
     def __init__(self, task, k=10, preset='balanced', **kwargs):
-        self.task    = task
-        self.k       = k
+        self.task = task
+        self.k = k
         self._finder = make_finder(preset, k, **kwargs)
-        self.models  = None
+        self.models = None
 
         self._val_preds = None   # (n_val, n_models) regression
                                  # (n_val, n_models, n_classes) classification
-        self._y_val     = None   # (n_val,) true values / class indices
-        self._y_onehot  = None   # (n_val, n_classes) for classification
-        self._is_proba  = None   # True if predictions are probability arrays
+        self._y_val = None   # (n_val,) true values / class indices
+        self._y_onehot = None   # (n_val, n_classes) for classification
+        self._is_proba = None   # True if predictions are probability arrays
 
     def fit(self, features, y, preds_dict):
         """
@@ -48,10 +48,10 @@ class LWSEI:
             classification with probability output.
         """
         features = np.asarray(features, dtype=float)
-        y        = np.asarray(y)
+        y = np.asarray(y)
 
-        self.models  = list(preds_dict.keys())
-        first        = np.asarray(list(preds_dict.values())[0])
+        self.models = list(preds_dict.keys())
+        first = np.asarray(list(preds_dict.values())[0])
         self._is_proba = (first.ndim == 2)
 
         # Stack predictions into a single matrix for fast neighbor indexing.
@@ -85,34 +85,34 @@ class LWSEI:
         dict or list of dict
             Single sample: {model_name: weight}. Batch: list of such dicts.
         """
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
-        n_models   = len(self.models)
-        uniform    = np.full(n_models, 1.0 / n_models)
+        n_models = len(self.models)
+        uniform = np.full(n_models, 1.0 / n_models)
 
         distances, indices = self._finder.kneighbors(x)   # (batch, k)
 
         results = []
         for b in range(batch_size):
-            idx  = indices[b]                              # (k,)
+            idx = indices[b]                              # (k,)
             dist = distances[b]                            # (k,)
 
             # Inverse-distance weights
             inv_dist = 1.0 / np.maximum(dist, 1e-8)
-            w        = inv_dist / inv_dist.sum()           # (k,)
-            sqrt_w   = np.sqrt(w)                          # (k,)
+            w = inv_dist / inv_dist.sum()           # (k,)
+            sqrt_w = np.sqrt(w)                          # (k,)
 
             if self._is_proba:
                 # P: (k, n_models, n_classes) becomes (k*n_classes, n_models)
-                P       = self._val_preds[idx]             # (k, n_models, n_classes)
+                P = self._val_preds[idx]             # (k, n_models, n_classes)
                 k_, _, n_classes = P.shape
-                P_flat  = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
-                y_flat  = self._y_onehot[idx].reshape(k_ * n_classes)
+                P_flat = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
+                y_flat = self._y_onehot[idx].reshape(k_ * n_classes)
                 sqrt_wt = np.repeat(sqrt_w, n_classes)     # (k*n_classes,)
-                P_wls   = P_flat  * sqrt_wt[:, np.newaxis]
-                y_wls   = y_flat  * sqrt_wt
+                P_wls = P_flat  * sqrt_wt[:, np.newaxis]
+                y_wls = y_flat  * sqrt_wt
             else:
-                P     = self._val_preds[idx]               # (k, n_models)
+                P = self._val_preds[idx]               # (k, n_models)
                 y_nbr = self._y_val[idx]                   # (k,)
                 P_wls = P     * sqrt_w[:, np.newaxis]
                 y_wls = y_nbr * sqrt_w

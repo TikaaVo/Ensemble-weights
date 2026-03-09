@@ -47,16 +47,16 @@ def make_seeds(n):
 
 # Each entry: (loader, run_fn, extra_kwargs, label, metric_name, higher_is_better)
 DATASETS = [
-    (load_california,    run_regression,     {},        'California Housing', 'MAE',      False),
-    (load_bike,          run_regression,     {},        'Bike Sharing',       'MAE',      False),
-    (load_abalone,       run_regression,     {},        'Abalone',            'MAE',      False),
-    (load_diabetes_data, run_regression,     {},        'Diabetes',           'MAE',      False),
-    (load_concrete,      run_regression,     {},        'Concrete Strength',  'MAE',      False),
-    (load_har,           run_classification, {'k': 20}, 'HAR',                'Accuracy', True),
-    (load_yeast,         run_classification, {'k': 10}, 'Yeast',              'Accuracy', True),
-    (load_segment,       run_classification, {'k': 10}, 'Image Segment',      'Accuracy', True),
-    (load_vowel,         run_classification, {'k': 10}, 'Vowel',              'Accuracy', True),
-    (load_waveform,      run_classification, {'k': 10}, 'Waveform',           'Accuracy', True),
+    (load_california,    run_regression, {}, 'California Housing', 'MAE', False),
+    (load_bike,          run_regression, {}, 'Bike Sharing', 'MAE', False),
+    (load_abalone,       run_regression, {}, 'Abalone', 'MAE', False),
+    (load_diabetes_data, run_regression, {}, 'Diabetes', 'MAE', False),
+    (load_concrete,      run_regression, {}, 'Concrete Strength', 'MAE', False),
+    (load_har,           run_classification, {'k': 20}, 'HAR', 'Accuracy', True),
+    (load_yeast,         run_classification, {'k': 10}, 'Yeast', 'Accuracy', True),
+    (load_segment,       run_classification, {'k': 10}, 'Image Segment', 'Accuracy', True),
+    (load_vowel,         run_classification, {'k': 10}, 'Vowel', 'Accuracy', True),
+    (load_waveform,      run_classification, {'k': 10}, 'Waveform', 'Accuracy', True),
 ]
 
 
@@ -96,7 +96,7 @@ def run_all_seeds(n_seeds, verbose_runs=False):
         loaded[label] = load_silently(loader)
         print(f"done  ({time.time()-t0:.1f}s)")
 
-    results     = {label: {} for _, _, _, label, _, _ in DATASETS}
+    results = {label: {} for _, _, _, label, _, _ in DATASETS}
     timing_fit  = {label: {} for _, _, _, label, _, _ in DATASETS}
     timing_pred = {label: {} for _, _, _, label, _, _ in DATASETS}
 
@@ -140,16 +140,16 @@ def print_summary(results, timing_fit, timing_pred, n_seeds):
     print(f"{'━' * W}")
 
     for _, _, _, label, metric_name, higher in DATASETS:
-        ds   = results[label]
+        ds = results[label]
         methods = list(ds.keys())
-        vals    = {m: np.array(ds[m]) for m in methods}
+        vals = {m: np.array(ds[m]) for m in methods}
 
         print(f"\n  {label}  ({metric_name}, {'higher' if higher else 'lower'} is better)")
         print(f"  {'-' * (W - 4)}")
 
         ref_method = methods[0]
-        ref_clean  = vals[ref_method][vals[ref_method] != np.array(None)].astype(float)
-        ref_mean   = ref_clean.mean()
+        ref_clean = vals[ref_method][vals[ref_method] != np.array(None)].astype(float)
+        ref_mean = ref_clean.mean()
 
         def _safe_mean(v):
             clean = v[v != np.array(None)].astype(float)
@@ -164,19 +164,19 @@ def print_summary(results, timing_fit, timing_pred, n_seeds):
         print(f"  {'-'*44}  {'-'*9}  {'-'*8}  {'-'*9}  {'-'*9}  {'-'*9}")
 
         for method in methods:
-            v_raw  = vals[method]
-            valid  = v_raw[v_raw != np.array(None)].astype(float)
-            n_ok   = len(valid)
+            v_raw = vals[method]
+            valid = v_raw[v_raw != np.array(None)].astype(float)
+            n_ok = len(valid)
             if n_ok == 0:
                 print(f"  {method:<44}  {'N/A':>9}  (all seeds failed)")
                 continue
-            mean  = valid.mean()
-            std   = valid.std()
+            mean = valid.mean()
+            std = valid.std()
             delta = (mean - ref_mean) / abs(ref_mean) * 100
             d_str = "    -    " if method == ref_method else \
                     f"{'+' if delta >= 0 else ''}{delta:.2f}%"
             marker = "  <" if abs(mean - best_mean) < 1e-12 else ""
-            miss   = f"  [{n_ok}/{len(v_raw)}]" if n_ok < len(v_raw) else ""
+            miss = f"  [{n_ok}/{len(v_raw)}]" if n_ok < len(v_raw) else ""
 
             if higher:
                 print(f"  {method:<44}  {mean*100:>8.2f}%  {std*100:>6.2f}%"
@@ -197,14 +197,14 @@ def print_summary(results, timing_fit, timing_pred, n_seeds):
             print(f"  {short:<44}{row}")
 
         # Timing summary
-        t_fit  = timing_fit.get(label, {})
+        t_fit = timing_fit.get(label, {})
         t_pred = timing_pred.get(label, {})
         if t_fit:
             print(f"\n  Timing (mean ms, {n_seeds} seeds):")
             print(f"  {'Method':<44}  {'Fit':>8}  {'Predict':>9}  {'Total':>7}")
             print(f"  {'-'*44}  {'-'*8}  {'-'*9}  {'-'*7}")
             for m in t_fit:
-                fa = [v for v in t_fit[m]          if v is not None and not np.isnan(v)]
+                fa = [v for v in t_fit[m] if v is not None and not np.isnan(v)]
                 pa = [v for v in t_pred.get(m, []) if v is not None and not np.isnan(v)]
                 if not fa: continue
                 fm = np.mean(fa); pm = np.mean(pa) if pa else float('nan')

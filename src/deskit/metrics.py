@@ -71,5 +71,5 @@ _METRICS = {
 }
 
 # Used in fit() validation to check that prediction shape matches the metric.
-_PROB_METRICS   = frozenset({'log_loss', 'prob_correct'})
+_PROB_METRICS = frozenset({'log_loss', 'prob_correct'})
 _SCALAR_METRICS = frozenset({'mae', 'mse', 'rmse', 'accuracy'})

@@ -48,9 +48,9 @@ class DEWST(KNNBase):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
 
-        self._use_signed  = metric_name in _SIGNED_METRICS
+        self._use_signed = metric_name in _SIGNED_METRICS
         self._metric_name = metric_name
-        self._convert     = {'mae': np.abs, 'mse': np.square}.get(metric_name)
+        self._convert = {'mae': np.abs, 'mse': np.square}.get(metric_name)
 
         # For signed metrics, use signed residuals
         super().__init__(
@@ -59,9 +59,9 @@ class DEWST(KNNBase):
             neighbor_finder=finder
         )
 
-        self._real_mode   = mode
-        self.task         = task
-        self.threshold    = threshold
+        self._real_mode = mode
+        self.task = task
+        self.threshold = threshold
         self._temperature = temperature
         self.r2_threshold = r2_threshold
 
@@ -103,14 +103,14 @@ class DEWST(KNNBase):
              (0.1 if self._real_mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
-        x          = np.atleast_2d(to_numpy(x))
+        x = np.atleast_2d(to_numpy(x))
         batch_size = x.shape[0]
 
         distances, indices = self.model.kneighbors(x)          # (batch, k)
         k = distances.shape[1]
 
         # Inverse-distance weights
-        inv_dist   = 1.0 / np.maximum(distances, 1e-8)         # (batch, k)
+        inv_dist = 1.0 / np.maximum(distances, 1e-8)         # (batch, k)
         inv_dist_w = inv_dist / inv_dist.sum(axis=1, keepdims=True)
 
         # Scores at each neighbour: (batch, k, n_models).
@@ -121,16 +121,16 @@ class DEWST(KNNBase):
         d_norm = distances / np.where(d_max > 0, d_max, 1.0)   # (batch, k)
 
         # X^{T}WX: shape (batch, 2, 2)
-        W   = inv_dist_w                                        # (batch, k)
-        a   =  W.sum(axis=1)                                    # (batch,)
-        b   = (W * d_norm).sum(axis=1)
+        W = inv_dist_w                                        # (batch, k)
+        a =  W.sum(axis=1)                                    # (batch,)
+        b = (W * d_norm).sum(axis=1)
         d_v = (W * d_norm ** 2).sum(axis=1)
         det = a * d_v - b ** 2                                  # (batch,)
-        bad_det  = np.abs(det) <= 1e-12
+        bad_det = np.abs(det) <= 1e-12
         det_safe = np.where(bad_det, 1.0, det)
 
         # XᵀWy for all models: shape (batch, 2, n_models).
-        Wy  = neighbor_scores * inv_dist_w[:, :, np.newaxis]    # (batch, k, n_models)
+        Wy = neighbor_scores * inv_dist_w[:, :, np.newaxis]    # (batch, k, n_models)
         Wdy = Wy * d_norm[:, :, np.newaxis]
         XtWy_0 = Wy.sum(axis=1)                                 # (batch, n_models)
         XtWy_1 = Wdy.sum(axis=1)                                # (batch, n_models)
@@ -140,29 +140,29 @@ class DEWST(KNNBase):
         # slope     B1
         intercept = (d_v[:, np.newaxis] * XtWy_0 -
                      b[:, np.newaxis]   * XtWy_1) / det_safe[:, np.newaxis]
-        slope     = (a[:, np.newaxis]   * XtWy_1 -
+        slope = (a[:, np.newaxis]   * XtWy_1 -
                      b[:, np.newaxis]   * XtWy_0) / det_safe[:, np.newaxis]
 
         # Weighted R^2
-        y_hat   = (intercept[:, np.newaxis, :] +
+        y_hat = (intercept[:, np.newaxis, :] +
                    slope[:, np.newaxis, :]     *
                    d_norm[:, :, np.newaxis])                    # (batch, k, n_models)
         y_wmean = XtWy_0                                        # weighted mean
-        ss_res  = (inv_dist_w[:, :, np.newaxis] *
+        ss_res = (inv_dist_w[:, :, np.newaxis] *
                    (neighbor_scores - y_hat) ** 2).sum(axis=1)
-        ss_tot  = (inv_dist_w[:, :, np.newaxis] *
+        ss_tot = (inv_dist_w[:, :, np.newaxis] *
                    (neighbor_scores - y_wmean[:, np.newaxis, :]) ** 2).sum(axis=1)
-        r2      = np.where(ss_tot > 1e-12, 1.0 - ss_res / ss_tot, 0.0)
+        r2 = np.where(ss_tot > 1e-12, 1.0 - ss_res / ss_tot, 0.0)
         # Bad determinant = fallback.
         r2      = np.where(bad_det[:, np.newaxis], 0.0, r2)    # (batch, n_models)
 
         # DEWS-I fallback
         if self._use_signed:
             # Convert signed residuals back to metric
-            fallback_raw   = self._convert(neighbor_scores)
-            dewsi_scores   = -(fallback_raw * inv_dist_w[:, :, np.newaxis]).sum(axis=1)
+            fallback_raw = self._convert(neighbor_scores)
+            dewsi_scores = -(fallback_raw * inv_dist_w[:, :, np.newaxis]).sum(axis=1)
         else:
-            dewsi_scores   = XtWy_0
+            dewsi_scores = XtWy_0
 
         # Convert trend intercept to routing scord
         if self._use_signed:
@@ -171,26 +171,26 @@ class DEWST(KNNBase):
             trend_scores = intercept
 
         # Blend: trust trend where R² ≥ threshold, fall back otherwise.
-        use_trend  = r2 >= self.r2_threshold
+        use_trend = r2 >= self.r2_threshold
         avg_scores = np.where(use_trend, trend_scores, dewsi_scores)
 
         # Standard DEWS softmax
-        local_min   = avg_scores.min(axis=1, keepdims=True)
-        local_max   = avg_scores.max(axis=1, keepdims=True)
+        local_min = avg_scores.min(axis=1, keepdims=True)
+        local_max = avg_scores.max(axis=1, keepdims=True)
         local_range = local_max - local_min
         norm_scores = (avg_scores - local_min) / np.where(local_range > 0, local_range, 1.0)
 
         if th > 0:
-            gate        = norm_scores >= th
-            any_pass    = gate.any(axis=1, keepdims=True)
-            gate        = np.where(any_pass, gate, norm_scores == 1.0)
+            gate = norm_scores >= th
+            any_pass = gate.any(axis=1, keepdims=True)
+            gate = np.where(any_pass, gate, norm_scores == 1.0)
             norm_scores = norm_scores * gate
 
         max_scores = norm_scores.max(axis=1, keepdims=True)
         exp_scores = np.exp((norm_scores - max_scores) / t)
         if th > 0:
             exp_scores = exp_scores * gate
-        total   = exp_scores.sum(axis=1, keepdims=True)
+        total = exp_scores.sum(axis=1, keepdims=True)
         weights = np.where(total > 0,
                            exp_scores / np.where(total > 0, total, 1.0),
                            np.full_like(exp_scores, 1.0 / len(self.models)))
