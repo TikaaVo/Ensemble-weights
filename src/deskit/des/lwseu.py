@@ -100,11 +100,14 @@ class LWSEU:
                 k_, _, n_classes = P.shape
                 P_flat = P.transpose(0, 2, 1).reshape(k_ * n_classes, n_models)
                 y_flat = self._y_onehot[idx].reshape(k_ * n_classes)
-                coeffs, _ = nnls(P_flat, y_flat)
+                coeffs, _ = nnls(P_flat, y_flat, max_iter=10*n_models)
             else:
                 P = self._val_preds[idx]               # (k, n_models)
                 y_nbr = self._y_val[idx]                   # (k,)
-                coeffs, _ = nnls(P, y_nbr)
+                lambda_ = 1e-6
+                P_aug = np.vstack([P, lambda_ * np.eye(n_models)])
+                y_aug = np.concatenate([y_nbr, np.zeros(n_models)])
+                coeffs, _ = nnls(P_aug, y_aug, max_iter=10*n_models)
 
             total = coeffs.sum()
             if total > 1e-10:

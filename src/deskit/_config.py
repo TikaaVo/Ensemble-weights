@@ -118,7 +118,6 @@ def make_finder(preset, k, finder=None, **kwargs):
         config = SPEED_PRESETS[preset]
         finder_type = config['finder']
         finder_kwargs = {**config['kwargs'], 'k': k, **kwargs}
-        print(f"Using preset '{preset}': {config['description']}")
 
     if finder_type == 'knn':
         from deskit.neighbors import KNNNeighborFinder

@@ -28,7 +28,6 @@ from deskit.des.knorae   import KNORAE
 from deskit.des.knoraiu import KNORAIU
 from deskit.router       import DynamicRouter
 from deskit._config      import SPEED_PRESETS, list_presets
-from deskit.analysis     import analyze
 
 __all__ = [
     'DEWSU',
@@ -38,6 +37,5 @@ __all__ = [
     'KNORAIU',
     'DynamicRouter',
     'SPEED_PRESETS',
-    'list_presets',
-    'analyze',
+    'list_presets'
 ]

@@ -118,7 +118,10 @@ class LWSEI:
                 y_wls = y_nbr * sqrt_w
 
             # Solve
-            coeffs, _ = nnls(P_wls, y_wls)
+            lambda_ = 1e-6
+            P_aug = np.vstack([P_wls, lambda_ * np.eye(n_models)])
+            y_aug = np.concatenate([y_wls, np.zeros(n_models)])
+            coeffs, _ = nnls(P_aug, y_aug, max_iter=10*n_models)
 
             # Normalize and fall back to uniform if degenerate.
             total = coeffs.sum()

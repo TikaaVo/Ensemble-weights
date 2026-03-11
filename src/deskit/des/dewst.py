@@ -43,7 +43,7 @@ class DEWST(KNNBase):
     """
 
     def __init__(self, task, metric='mae', mode='min', k=10,
-                 threshold=0.5, temperature=None, r2_threshold=0.2,
+                 threshold=0.5, temperature=None, r2_threshold=0.7,
                  preset='balanced', **kwargs):
         metric_name, metric_fn = resolve_metric(metric)
         finder = make_finder(preset, k, **kwargs)
@@ -152,7 +152,8 @@ class DEWST(KNNBase):
                    (neighbor_scores - y_hat) ** 2).sum(axis=1)
         ss_tot = (inv_dist_w[:, :, np.newaxis] *
                    (neighbor_scores - y_wmean[:, np.newaxis, :]) ** 2).sum(axis=1)
-        r2 = np.where(ss_tot > 1e-12, 1.0 - ss_res / ss_tot, 0.0)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            r2 = np.where(ss_tot > 1e-12, 1.0 - ss_res / ss_tot, 0.0)
         # Bad determinant = fallback.
         r2      = np.where(bad_det[:, np.newaxis], 0.0, r2)    # (batch, n_models)
 
