@@ -101,7 +101,7 @@ class DEWSIV(KNNBase):
         """
         t = temperature if temperature is not None else (
              self._temperature if self._temperature is not None else
-             (0.1 if self.mode == 'min' else 1.0))
+             (0.5 if self.mode == 'min' else 1.0))
         th = threshold if threshold is not None else self.threshold
 
         x = np.atleast_2d(to_numpy(x))

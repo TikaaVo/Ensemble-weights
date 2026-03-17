@@ -22,11 +22,11 @@ computation.
 If you want to get potentially better results and don't mind trying multiple algorithms, analyzing your dataset more in depth,
 and/or tuning hyperparameters, consider the following alongside the previous ones:
 
+- [DEWS-IV](algorithms/dewsiv.md): performs worse than the other algorithms in most cases, but can very rarely perform well
+in noisy datasets where consistency is important. 
 - [LWSE-I](algorithms/lwsei.md): has the potential to improve performance drastically, but is less consistent than
 the previous ones. Best when a dataset has clear local structure and with larger values of k. It is more computationally
-expensive than the other algorithms
-- [DEWS-IV](algorithms/dewsiv.md): performs worse than the other algorithms in most cases, but can very rarely perform well
-in noisy datasets where consistency is important. **Generally not recommended for use**
+expensive than the other algorithms and is more inconsistent and k-dependent.
 
 ## Classification
 
@@ -47,15 +47,14 @@ computation.
 If you want to get potentially better results and don't mind trying multiple algorithms, analyzing your dataset more in depth,
 and/or tuning hyperparameters, consider the following alongside the previous ones:
 
+- [DEWS-IV](algorithms/dewsiv.md): performs worse than the other algorithms in most cases, but can very rarely perform well
+in noisy datasets where consistency is important. 
 - [LWSE-I](algorithms/lwsei.md): has the potential to improve performance drastically, but is less consistent than
 the previous ones. Best when a dataset has clear local structure and with larger values of k. It is more computationally
-expensive than the other algorithms
-- [DEWS-IV](algorithms/dewsiv.md): performs worse than the other algorithms in most cases, but can very rarely perform well
-in noisy datasets where consistency is important. **Generally not recommended for use**
+expensive than the other algorithms and is more inconsistent and k-dependent.
 - [KNORA-E](algorithms/knorae.md): similar situation to DEWS-IV but even more pronounced, its failures are more extreme and
 its successes are rarer, so it is generally not recommended to be considered, as it is a very aggressive algorithm. 
-However, it can rarely work when other algorithms struggle, especially when there are clear regional specialist. 
-**Generally not recommended for use**
+However, it can rarely work when other algorithms struggle, especially when there are clear regional specialist.
 
 ## Not recommended for use
 

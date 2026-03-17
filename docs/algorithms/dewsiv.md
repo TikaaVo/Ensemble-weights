@@ -38,7 +38,7 @@ Finally, it takes the remaining models and creates weights with their scores usi
 | `mode`        | str | —                                     | `"max"` if higher is better, `"min"` if lower                                                                                                                   |
 | `k`           | int | 10                                    | Number of neighbours                                                                                                                                            |
 | `threshold`   | float | 0.5                                   | Competence cutoff                                                                                                                                               |
-| `temperature` | float | 0.1/1.0 for regression/classification | Defines how smooth the model blend is                                                                                                                           |
+| `temperature` | float | 0.5/1.0 for regression/classification | Defines how smooth the model blend is                                                                                                                           |
 | `preset`      | str | `"balanced"`                          | ANN backend preset                                                                                                                                              |
 | `finder`      | str | —, optional                           | Only if the preset is `"custom"`; Options: `"knn"`, `"faiss"`, `"annoy"`, `"hnsw"`                                                                              |
 
